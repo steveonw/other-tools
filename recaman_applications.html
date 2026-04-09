@@ -1,0 +1,1064 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Recamán Applications: Search, Recursion, Data</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            margin: 0;
+            padding: 20px;
+            background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%);
+            min-height: 100vh;
+            color: white;
+        }
+        .container {
+            max-width: 1800px;
+            margin: 0 auto;
+        }
+        h1 {
+            text-align: center;
+            margin-bottom: 10px;
+            font-size: 32px;
+        }
+        .subtitle {
+            text-align: center;
+            color: #aaa;
+            margin-bottom: 30px;
+            font-size: 16px;
+        }
+        .tabs {
+            display: flex;
+            gap: 10px;
+            justify-content: center;
+            margin-bottom: 30px;
+            flex-wrap: wrap;
+        }
+        .tab {
+            background: rgba(255,255,255,0.1);
+            padding: 15px 30px;
+            border-radius: 10px;
+            cursor: pointer;
+            transition: all 0.3s;
+            border: 2px solid transparent;
+            font-weight: 600;
+        }
+        .tab:hover {
+            background: rgba(255,255,255,0.2);
+            transform: translateY(-2px);
+        }
+        .tab.active {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            border-color: #fff;
+        }
+        .view {
+            display: none;
+            background: rgba(255,255,255,0.95);
+            border-radius: 15px;
+            padding: 30px;
+            color: #333;
+        }
+        .view.active {
+            display: block;
+        }
+        .section-title {
+            font-size: 24px;
+            font-weight: bold;
+            color: #333;
+            margin-bottom: 20px;
+            padding-bottom: 10px;
+            border-bottom: 3px solid #667eea;
+        }
+        .controls {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 20px;
+            margin-bottom: 30px;
+            background: #f5f5f5;
+            padding: 20px;
+            border-radius: 10px;
+        }
+        .control-group {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+        label {
+            font-weight: 600;
+            color: #555;
+            font-size: 13px;
+        }
+        input[type="range"] {
+            width: 100%;
+        }
+        input[type="number"], select {
+            padding: 8px;
+            border: 2px solid #667eea;
+            border-radius: 5px;
+            font-size: 14px;
+        }
+        .value-display {
+            background: #667eea;
+            color: white;
+            padding: 5px 10px;
+            border-radius: 5px;
+            text-align: center;
+            font-weight: bold;
+            font-size: 13px;
+        }
+        button {
+            background: #667eea;
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 5px;
+            cursor: pointer;
+            font-weight: 600;
+            transition: all 0.3s;
+            font-size: 14px;
+        }
+        button:hover {
+            background: #5568d3;
+            transform: translateY(-2px);
+        }
+        .canvas-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(500px, 1fr));
+            gap: 20px;
+            margin-bottom: 30px;
+        }
+        .canvas-container {
+            background: white;
+            padding: 20px;
+            border-radius: 10px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+        }
+        .canvas-title {
+            font-weight: bold;
+            color: #333;
+            margin-bottom: 15px;
+            text-align: center;
+            font-size: 16px;
+        }
+        canvas {
+            display: block;
+            margin: 0 auto;
+            border: 2px solid #ddd;
+            border-radius: 8px;
+            background: #fafafa;
+        }
+        .info-box {
+            background: #e3f2fd;
+            border-left: 4px solid #2196f3;
+            padding: 20px;
+            margin: 20px 0;
+            border-radius: 8px;
+        }
+        .info-box h3 {
+            margin-top: 0;
+            color: #1976d2;
+        }
+        .info-box ul {
+            margin: 10px 0;
+            padding-left: 20px;
+        }
+        .stats {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+            gap: 15px;
+            margin: 20px 0;
+        }
+        .stat-box {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 15px;
+            border-radius: 8px;
+            text-align: center;
+        }
+        .stat-label {
+            font-size: 11px;
+            opacity: 0.9;
+            margin-bottom: 5px;
+        }
+        .stat-value {
+            font-size: 20px;
+            font-weight: bold;
+        }
+        .data-encoding {
+            background: #f5f5f5;
+            padding: 15px;
+            border-radius: 8px;
+            font-family: monospace;
+            font-size: 13px;
+            margin: 15px 0;
+            max-height: 200px;
+            overflow-y: auto;
+        }
+        .highlight {
+            background: #ffeb3b;
+            padding: 2px 4px;
+            border-radius: 3px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🔍 Recamán Sequence: Advanced Applications</h1>
+        <p class="subtitle">Search Patterns • Recursive Algorithms • Data Encoding</p>
+        
+        <div class="tabs">
+            <div class="tab active" onclick="switchTab('search')">2D/3D Search Patterns</div>
+            <div class="tab" onclick="switchTab('recursive')">Recursive Structures</div>
+            <div class="tab" onclick="switchTab('encoding')">Data Encoding</div>
+        </div>
+
+        <!-- SEARCH PATTERNS VIEW -->
+        <div class="view active" id="searchView">
+            <div class="section-title">🗺️ Using Recamán for 2D/3D Space Exploration</div>
+            
+            <div class="info-box">
+                <h3>The Idea:</h3>
+                <ul>
+                    <li><strong>2D Search:</strong> Map Recamán values to (x,y) coordinates - creates non-linear exploration pattern</li>
+                    <li><strong>3D Search:</strong> Use loop iteration as Z-axis - each loop explores a different "layer"</li>
+                    <li><strong>Advantages:</strong> Covers space unpredictably, avoids linear bias, good for optimization problems</li>
+                    <li><strong>Applications:</strong> Pathfinding, resource discovery, coverage algorithms, robot navigation</li>
+                </ul>
+            </div>
+
+            <div class="controls">
+                <div class="control-group">
+                    <label for="searchTerms">Pattern Length:</label>
+                    <input type="range" id="searchTerms" min="20" max="200" value="100" step="10">
+                    <div class="value-display" id="searchTermsValue">100</div>
+                </div>
+                <div class="control-group">
+                    <label for="searchLoops">Z-Layers (3D):</label>
+                    <input type="range" id="searchLoops" min="1" max="5" value="3" step="1">
+                    <div class="value-display" id="searchLoopsValue">3</div>
+                </div>
+                <div class="control-group">
+                    <label for="mappingMode">Coordinate Mapping:</label>
+                    <select id="mappingMode">
+                        <option value="modulo">Modulo (wraps around)</option>
+                        <option value="spiral">Spiral Mapping</option>
+                        <option value="zigzag">Zigzag Pattern</option>
+                        <option value="hilbert">Hilbert-like</option>
+                    </select>
+                </div>
+                <div class="control-group">
+                    <label for="gridSize">Grid Size:</label>
+                    <input type="range" id="gridSize" min="10" max="50" value="30" step="5">
+                    <div class="value-display" id="gridSizeValue">30x30</div>
+                </div>
+            </div>
+
+            <button onclick="generateSearch()" style="display: block; margin: 0 auto 20px;">🔄 Generate Search Pattern</button>
+
+            <div class="canvas-grid">
+                <div class="canvas-container">
+                    <div class="canvas-title">2D Search Pattern (Single Layer)</div>
+                    <canvas id="search2D" width="500" height="500"></canvas>
+                </div>
+                <div class="canvas-container">
+                    <div class="canvas-title">3D Visualization (Multiple Layers)</div>
+                    <canvas id="search3D" width="500" height="500"></canvas>
+                </div>
+            </div>
+
+            <div class="stats" id="searchStats"></div>
+        </div>
+
+        <!-- RECURSIVE VIEW -->
+        <div class="view" id="recursiveView">
+            <div class="section-title">🌳 Recursive Tree Structures & Graph Traversal</div>
+            
+            <div class="info-box">
+                <h3>The Idea:</h3>
+                <ul>
+                    <li><strong>Tree Depth:</strong> Use Recamán values to determine how deep to recurse</li>
+                    <li><strong>Branch Selection:</strong> Add/subtract decisions determine left/right branches</li>
+                    <li><strong>Graph Traversal:</strong> Recamán creates unique visiting order for nodes</li>
+                    <li><strong>Memoization:</strong> The "seen" set is like caching in recursion</li>
+                    <li><strong>Applications:</strong> Decision trees, fractal generation, maze solving, parsing</li>
+                </ul>
+            </div>
+
+            <div class="controls">
+                <div class="control-group">
+                    <label for="treeDepth">Max Tree Depth:</label>
+                    <input type="range" id="treeDepth" min="3" max="8" value="5" step="1">
+                    <div class="value-display" id="treeDepthValue">5</div>
+                </div>
+                <div class="control-group">
+                    <label for="recursiveTerms">Recamán Terms:</label>
+                    <input type="range" id="recursiveTerms" min="20" max="150" value="50" step="10">
+                    <div class="value-display" id="recursiveTermsValue">50</div>
+                </div>
+                <div class="control-group">
+                    <label for="treeStyle">Tree Style:</label>
+                    <select id="treeStyle">
+                        <option value="binary">Binary Tree</option>
+                        <option value="fractal">Fractal Pattern</option>
+                        <option value="graph">Graph Traversal</option>
+                    </select>
+                </div>
+            </div>
+
+            <button onclick="generateRecursive()" style="display: block; margin: 0 auto 20px;">🔄 Generate Structure</button>
+
+            <div class="canvas-grid">
+                <div class="canvas-container">
+                    <div class="canvas-title">Recamán-Driven Tree Structure</div>
+                    <canvas id="recursiveTree" width="500" height="500"></canvas>
+                </div>
+                <div class="canvas-container">
+                    <div class="canvas-title">Traversal Order Visualization</div>
+                    <canvas id="traversalOrder" width="500" height="500"></canvas>
+                </div>
+            </div>
+
+            <div class="stats" id="recursiveStats"></div>
+        </div>
+
+        <!-- ENCODING VIEW -->
+        <div class="view" id="encodingView">
+            <div class="section-title">💾 Multi-Layer Data Encoding</div>
+            
+            <div class="info-box">
+                <h3>The Idea - Multiple Information Channels:</h3>
+                <ul>
+                    <li><strong>Layer 1:</strong> Sequence values themselves (which numbers appear)</li>
+                    <li><strong>Layer 2:</strong> Add/Subtract decisions (binary decision at each step)</li>
+                    <li><strong>Layer 3:</strong> Position in loop (temporal information)</li>
+                    <li><strong>Layer 4:</strong> Binary modification pattern (meta-encoding)</li>
+                    <li><strong>Layer 5:</strong> Loop number (3D temporal structure)</li>
+                    <li><strong>Total:</strong> Can encode ~5-10 bits per sequence position vs ~1-2 bits in normal encoding!</li>
+                </ul>
+            </div>
+
+            <div class="controls">
+                <div class="control-group">
+                    <label for="encodeTerms">Pattern Length:</label>
+                    <input type="range" id="encodeTerms" min="20" max="100" value="50" step="10">
+                    <div class="value-display" id="encodeTermsValue">50</div>
+                </div>
+                <div class="control-group">
+                    <label for="messageInput">Message to Encode:</label>
+                    <input type="text" id="messageInput" placeholder="Enter text message" value="HELLO WORLD">
+                </div>
+                <div class="control-group">
+                    <label for="encodingLayers">Use Encoding Layers:</label>
+                    <select id="encodingLayers" multiple size="5" style="height: auto;">
+                        <option value="values" selected>Sequence Values</option>
+                        <option value="operations" selected>Add/Sub Decisions</option>
+                        <option value="positions" selected>Position Indices</option>
+                        <option value="binary">Binary Pattern</option>
+                        <option value="loops">Loop Numbers</option>
+                    </select>
+                </div>
+            </div>
+
+            <button onclick="encodeData()" style="display: block; margin: 0 auto 20px;">🔄 Encode Message</button>
+
+            <div class="canvas-container" style="margin-bottom: 20px;">
+                <div class="canvas-title">Encoded Data Visualization</div>
+                <canvas id="encodingViz" width="1000" height="400"></canvas>
+            </div>
+
+            <div class="data-encoding" id="encodingOutput">
+                <strong>Encoding Results:</strong><br>
+                Click "Encode Message" to see multi-layer encoding breakdown...
+            </div>
+
+            <div class="stats" id="encodingStats"></div>
+        </div>
+    </div>
+
+    <script>
+        let currentTab = 'search';
+
+        function switchTab(tab) {
+            currentTab = tab;
+            document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+            document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
+            event.target.classList.add('active');
+            document.getElementById(tab + 'View').classList.add('active');
+        }
+
+        function generateRecaman(n) {
+            const sequence = [0];
+            const operations = ['start'];
+            const seen = new Set([0]);
+            
+            for (let i = 1; i < n; i++) {
+                const prev = sequence[i - 1];
+                const subtract = prev - i;
+                
+                if (subtract > 0 && !seen.has(subtract)) {
+                    sequence.push(subtract);
+                    operations.push('sub');
+                    seen.add(subtract);
+                } else {
+                    const add = prev + i;
+                    sequence.push(add);
+                    operations.push('add');
+                    seen.add(add);
+                }
+            }
+            
+            return { sequence, operations };
+        }
+
+        // ===== SEARCH PATTERNS =====
+        function generateSearch() {
+            const terms = parseInt(document.getElementById('searchTerms').value);
+            const loops = parseInt(document.getElementById('searchLoops').value);
+            const mappingMode = document.getElementById('mappingMode').value;
+            const gridSize = parseInt(document.getElementById('gridSize').value);
+            
+            const { sequence, operations } = generateRecaman(terms);
+            
+            // 2D mapping
+            const coords2D = mapToGrid(sequence, gridSize, mappingMode);
+            draw2DSearch(coords2D, gridSize);
+            
+            // 3D mapping with loops
+            const coords3D = [];
+            for (let loop = 0; loop < loops; loop++) {
+                const loopCoords = mapToGrid(sequence, gridSize, mappingMode);
+                loopCoords.forEach(coord => {
+                    coords3D.push({ ...coord, z: loop });
+                });
+            }
+            draw3DSearch(coords3D, gridSize, loops);
+            
+            updateSearchStats(sequence, coords2D, loops);
+        }
+
+        function mapToGrid(sequence, gridSize, mode) {
+            const coords = [];
+            
+            for (let i = 0; i < sequence.length; i++) {
+                const val = sequence[i];
+                let x, y;
+                
+                if (mode === 'modulo') {
+                    x = val % gridSize;
+                    y = Math.floor(val / gridSize) % gridSize;
+                } else if (mode === 'spiral') {
+                    const angle = val * 0.5;
+                    const radius = (val % gridSize) / gridSize * (gridSize / 2);
+                    x = Math.floor(gridSize/2 + radius * Math.cos(angle));
+                    y = Math.floor(gridSize/2 + radius * Math.sin(angle));
+                } else if (mode === 'zigzag') {
+                    const row = Math.floor(val / gridSize) % gridSize;
+                    x = row % 2 === 0 ? val % gridSize : gridSize - 1 - (val % gridSize);
+                    y = row;
+                } else if (mode === 'hilbert') {
+                    // Simplified Hilbert-like mapping
+                    const t = val % (gridSize * gridSize);
+                    x = t % gridSize;
+                    y = Math.floor(t / gridSize);
+                }
+                
+                coords.push({ x: Math.max(0, Math.min(gridSize-1, x)), 
+                             y: Math.max(0, Math.min(gridSize-1, y)), 
+                             step: i, 
+                             val: val });
+            }
+            
+            return coords;
+        }
+
+        function draw2DSearch(coords, gridSize) {
+            const canvas = document.getElementById('search2D');
+            const ctx = canvas.getContext('2d');
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            
+            const cellSize = Math.min(canvas.width, canvas.height) / gridSize;
+            
+            // Draw grid
+            ctx.strokeStyle = '#e0e0e0';
+            ctx.lineWidth = 1;
+            for (let i = 0; i <= gridSize; i++) {
+                ctx.beginPath();
+                ctx.moveTo(i * cellSize, 0);
+                ctx.lineTo(i * cellSize, gridSize * cellSize);
+                ctx.stroke();
+                ctx.beginPath();
+                ctx.moveTo(0, i * cellSize);
+                ctx.lineTo(gridSize * cellSize, i * cellSize);
+                ctx.stroke();
+            }
+            
+            // Draw path
+            ctx.strokeStyle = '#667eea';
+            ctx.lineWidth = 2;
+            ctx.beginPath();
+            for (let i = 0; i < coords.length; i++) {
+                const x = coords[i].x * cellSize + cellSize/2;
+                const y = coords[i].y * cellSize + cellSize/2;
+                if (i === 0) ctx.moveTo(x, y);
+                else ctx.lineTo(x, y);
+            }
+            ctx.stroke();
+            
+            // Draw points with gradient
+            coords.forEach((coord, i) => {
+                const x = coord.x * cellSize + cellSize/2;
+                const y = coord.y * cellSize + cellSize/2;
+                const hue = (i / coords.length) * 280;
+                ctx.fillStyle = `hsl(${hue}, 70%, 50%)`;
+                ctx.beginPath();
+                ctx.arc(x, y, 4, 0, Math.PI * 2);
+                ctx.fill();
+            });
+            
+            // Highlight start and end
+            ctx.fillStyle = '#2ecc71';
+            ctx.beginPath();
+            ctx.arc(coords[0].x * cellSize + cellSize/2, coords[0].y * cellSize + cellSize/2, 6, 0, Math.PI * 2);
+            ctx.fill();
+            
+            ctx.fillStyle = '#e74c3c';
+            ctx.beginPath();
+            const last = coords[coords.length - 1];
+            ctx.arc(last.x * cellSize + cellSize/2, last.y * cellSize + cellSize/2, 6, 0, Math.PI * 2);
+            ctx.fill();
+        }
+
+        function draw3DSearch(coords, gridSize, loops) {
+            const canvas = document.getElementById('search3D');
+            const ctx = canvas.getContext('2d');
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            
+            const scale = 12;
+            const offsetX = 100;
+            const offsetY = 100;
+            
+            // Isometric projection
+            coords.forEach((coord, i) => {
+                const isoX = offsetX + (coord.x - coord.y) * scale * 0.866;
+                const isoY = offsetY + (coord.x + coord.y) * scale * 0.5 - coord.z * scale * 1.5;
+                
+                const hue = (coord.z / loops) * 120 + 200;
+                ctx.fillStyle = `hsla(${hue}, 70%, 50%, 0.6)`;
+                ctx.beginPath();
+                ctx.arc(isoX, isoY, 3, 0, Math.PI * 2);
+                ctx.fill();
+            });
+            
+            // Draw connections within each layer
+            for (let z = 0; z < loops; z++) {
+                const layerCoords = coords.filter(c => c.z === z);
+                ctx.strokeStyle = `hsla(${(z / loops) * 120 + 200}, 70%, 50%, 0.3)`;
+                ctx.lineWidth = 1;
+                ctx.beginPath();
+                layerCoords.forEach((coord, i) => {
+                    const isoX = offsetX + (coord.x - coord.y) * scale * 0.866;
+                    const isoY = offsetY + (coord.x + coord.y) * scale * 0.5 - coord.z * scale * 1.5;
+                    if (i === 0) ctx.moveTo(isoX, isoY);
+                    else ctx.lineTo(isoX, isoY);
+                });
+                ctx.stroke();
+            }
+            
+            // Labels
+            ctx.fillStyle = '#333';
+            ctx.font = 'bold 14px Arial';
+            ctx.fillText('3D Search Space', 10, 20);
+            ctx.font = '12px Arial';
+            ctx.fillText(`${loops} layers (Z-axis)`, 10, 40);
+        }
+
+        function updateSearchStats(sequence, coords, loops) {
+            const uniquePositions = new Set(coords.map(c => `${c.x},${c.y}`)).size;
+            const maxVal = Math.max(...sequence);
+            const coverage = (uniquePositions / (coords.length)) * 100;
+            
+            const html = `
+                <div class="stat-box">
+                    <div class="stat-label">Total Steps</div>
+                    <div class="stat-value">${sequence.length}</div>
+                </div>
+                <div class="stat-box">
+                    <div class="stat-label">Unique Positions</div>
+                    <div class="stat-value">${uniquePositions}</div>
+                </div>
+                <div class="stat-box">
+                    <div class="stat-label">Coverage</div>
+                    <div class="stat-value">${coverage.toFixed(1)}%</div>
+                </div>
+                <div class="stat-box">
+                    <div class="stat-label">3D Points</div>
+                    <div class="stat-value">${sequence.length * loops}</div>
+                </div>
+                <div class="stat-box">
+                    <div class="stat-label">Max Value</div>
+                    <div class="stat-value">${maxVal}</div>
+                </div>
+            `;
+            document.getElementById('searchStats').innerHTML = html;
+        }
+
+        // ===== RECURSIVE STRUCTURES =====
+        function generateRecursive() {
+            const depth = parseInt(document.getElementById('treeDepth').value);
+            const terms = parseInt(document.getElementById('recursiveTerms').value);
+            const style = document.getElementById('treeStyle').value;
+            
+            const { sequence, operations } = generateRecaman(terms);
+            
+            if (style === 'binary') {
+                drawBinaryTree(sequence, operations, depth);
+            } else if (style === 'fractal') {
+                drawFractal(sequence, operations, depth);
+            } else {
+                drawGraph(sequence, operations);
+            }
+            
+            drawTraversalOrder(sequence, operations);
+            updateRecursiveStats(sequence, operations, depth);
+        }
+
+        function drawBinaryTree(sequence, operations, maxDepth) {
+            const canvas = document.getElementById('recursiveTree');
+            const ctx = canvas.getContext('2d');
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            
+            const startX = canvas.width / 2;
+            const startY = 50;
+            let nodeCount = 0;
+            
+            function drawNode(x, y, depth, seqIndex) {
+                if (depth > maxDepth || seqIndex >= sequence.length) return;
+                
+                const val = sequence[seqIndex] % 100;
+                const op = operations[seqIndex];
+                
+                // Draw node
+                const hue = (depth / maxDepth) * 280;
+                ctx.fillStyle = `hsl(${hue}, 70%, 50%)`;
+                ctx.beginPath();
+                ctx.arc(x, y, 8, 0, Math.PI * 2);
+                ctx.fill();
+                
+                // Label
+                ctx.fillStyle = '#333';
+                ctx.font = '10px Arial';
+                ctx.fillText(val, x - 8, y - 12);
+                
+                nodeCount++;
+                
+                // Calculate child positions
+                const spread = canvas.width / Math.pow(2, depth + 2);
+                const childY = y + 60;
+                
+                // Left child (subtract branch)
+                if (op === 'sub' || depth % 2 === 0) {
+                    const leftX = x - spread;
+                    ctx.strokeStyle = '#3498db';
+                    ctx.lineWidth = 2;
+                    ctx.beginPath();
+                    ctx.moveTo(x, y);
+                    ctx.lineTo(leftX, childY);
+                    ctx.stroke();
+                    drawNode(leftX, childY, depth + 1, seqIndex + 1);
+                }
+                
+                // Right child (add branch)
+                if (op === 'add' || depth % 2 === 1) {
+                    const rightX = x + spread;
+                    ctx.strokeStyle = '#e74c3c';
+                    ctx.lineWidth = 2;
+                    ctx.beginPath();
+                    ctx.moveTo(x, y);
+                    ctx.lineTo(rightX, childY);
+                    ctx.stroke();
+                    drawNode(rightX, childY, depth + 1, seqIndex + 2);
+                }
+            }
+            
+            drawNode(startX, startY, 0, 0);
+        }
+
+        function drawFractal(sequence, operations, depth) {
+            const canvas = document.getElementById('recursiveTree');
+            const ctx = canvas.getContext('2d');
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            
+            const startX = canvas.width / 2;
+            const startY = canvas.height - 50;
+            
+            function drawBranch(x, y, angle, length, depth, seqIndex) {
+                if (depth <= 0 || seqIndex >= sequence.length) return;
+                
+                const val = sequence[seqIndex];
+                const op = operations[seqIndex];
+                
+                // Calculate end point
+                const endX = x + length * Math.cos(angle);
+                const endY = y - length * Math.sin(angle);
+                
+                // Draw branch
+                const hue = (seqIndex / sequence.length) * 280;
+                ctx.strokeStyle = `hsl(${hue}, 70%, 50%)`;
+                ctx.lineWidth = depth / 2;
+                ctx.beginPath();
+                ctx.moveTo(x, y);
+                ctx.lineTo(endX, endY);
+                ctx.stroke();
+                
+                // Recursively draw branches
+                const angleChange = (val % 60) * Math.PI / 180;
+                const newLength = length * 0.7;
+                
+                if (op === 'sub') {
+                    drawBranch(endX, endY, angle - angleChange, newLength, depth - 1, seqIndex + 1);
+                } else {
+                    drawBranch(endX, endY, angle + angleChange, newLength, depth - 1, seqIndex + 1);
+                }
+                
+                // Sometimes branch both ways
+                if (val % 3 === 0) {
+                    drawBranch(endX, endY, angle + angleChange/2, newLength * 0.8, depth - 1, seqIndex + 2);
+                }
+            }
+            
+            drawBranch(startX, startY, Math.PI/2, 80, depth, 0);
+        }
+
+        function drawGraph(sequence, operations) {
+            const canvas = document.getElementById('recursiveTree');
+            const ctx = canvas.getContext('2d');
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            
+            const nodes = [];
+            const maxNodes = 30;
+            
+            // Create nodes from sequence
+            for (let i = 0; i < Math.min(sequence.length, maxNodes); i++) {
+                const angle = (i / maxNodes) * 2 * Math.PI;
+                const radius = 150 + (sequence[i] % 50);
+                const x = canvas.width/2 + radius * Math.cos(angle);
+                const y = canvas.height/2 + radius * Math.sin(angle);
+                nodes.push({ x, y, val: sequence[i], op: operations[i] });
+            }
+            
+            // Draw edges based on Recamán connections
+            for (let i = 1; i < nodes.length; i++) {
+                const from = nodes[i - 1];
+                const to = nodes[i];
+                
+                ctx.strokeStyle = operations[i] === 'sub' ? '#3498db' : '#e74c3c';
+                ctx.lineWidth = 1;
+                ctx.globalAlpha = 0.3;
+                ctx.beginPath();
+                ctx.moveTo(from.x, from.y);
+                ctx.lineTo(to.x, to.y);
+                ctx.stroke();
+            }
+            ctx.globalAlpha = 1;
+            
+            // Draw nodes
+            nodes.forEach((node, i) => {
+                const hue = (i / nodes.length) * 280;
+                ctx.fillStyle = `hsl(${hue}, 70%, 50%)`;
+                ctx.beginPath();
+                ctx.arc(node.x, node.y, 6, 0, Math.PI * 2);
+                ctx.fill();
+                
+                ctx.fillStyle = '#333';
+                ctx.font = '10px Arial';
+                ctx.fillText(node.val % 100, node.x + 10, node.y);
+            });
+        }
+
+        function drawTraversalOrder(sequence, operations) {
+            const canvas = document.getElementById('traversalOrder');
+            const ctx = canvas.getContext('2d');
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            
+            const barWidth = canvas.width / sequence.length;
+            const maxVal = Math.max(...sequence);
+            
+            // Draw bars
+            sequence.forEach((val, i) => {
+                const height = (val / maxVal) * (canvas.height - 60);
+                const x = i * barWidth;
+                const y = canvas.height - 30 - height;
+                
+                const hue = operations[i] === 'sub' ? 220 : 0;
+                ctx.fillStyle = `hsl(${hue}, 70%, 50%)`;
+                ctx.fillRect(x, y, Math.max(1, barWidth - 1), height);
+            });
+            
+            // Draw order line
+            ctx.strokeStyle = '#333';
+            ctx.lineWidth = 2;
+            ctx.beginPath();
+            sequence.forEach((val, i) => {
+                const height = (val / maxVal) * (canvas.height - 60);
+                const x = i * barWidth + barWidth/2;
+                const y = canvas.height - 30 - height;
+                if (i === 0) ctx.moveTo(x, y);
+                else ctx.lineTo(x, y);
+            });
+            ctx.stroke();
+            
+            // Labels
+            ctx.fillStyle = '#333';
+            ctx.font = 'bold 14px Arial';
+            ctx.fillText('Traversal Order', 10, 20);
+            ctx.font = '11px Arial';
+            ctx.fillText('Blue = Subtract | Red = Add', 10, 40);
+        }
+
+        function updateRecursiveStats(sequence, operations, depth) {
+            const subs = operations.filter(op => op === 'sub').length;
+            const adds = operations.filter(op => op === 'add').length;
+            const maxVal = Math.max(...sequence);
+            
+            const html = `
+                <div class="stat-box">
+                    <div class="stat-label">Max Depth</div>
+                    <div class="stat-value">${depth}</div>
+                </div>
+                <div class="stat-box">
+                    <div class="stat-label">Nodes</div>
+                    <div class="stat-value">${sequence.length}</div>
+                </div>
+                <div class="stat-box">
+                    <div class="stat-label">Left Branches</div>
+                    <div class="stat-value">${subs}</div>
+                </div>
+                <div class="stat-box">
+                    <div class="stat-label">Right Branches</div>
+                    <div class="stat-value">${adds}</div>
+                </div>
+                <div class="stat-box">
+                    <div class="stat-label">Max Value</div>
+                    <div class="stat-value">${maxVal}</div>
+                </div>
+            `;
+            document.getElementById('recursiveStats').innerHTML = html;
+        }
+
+        // ===== DATA ENCODING =====
+        function encodeData() {
+            const terms = parseInt(document.getElementById('encodeTerms').value);
+            const message = document.getElementById('messageInput').value;
+            const layers = Array.from(document.getElementById('encodingLayers').selectedOptions).map(o => o.value);
+            
+            const { sequence, operations } = generateRecaman(terms);
+            
+            // Calculate encoding capacity
+            let bitsPerPosition = 0;
+            let encodingBreakdown = '<strong>Multi-Layer Encoding Analysis:</strong><br><br>';
+            
+            if (layers.includes('values')) {
+                const maxVal = Math.max(...sequence);
+                const valBits = Math.ceil(Math.log2(maxVal));
+                bitsPerPosition += valBits;
+                encodingBreakdown += `<span class="highlight">Layer 1 - Sequence Values:</span> ${valBits} bits per position (max value: ${maxVal})<br>`;
+            }
+            
+            if (layers.includes('operations')) {
+                bitsPerPosition += 1;
+                encodingBreakdown += `<span class="highlight">Layer 2 - Add/Sub Operations:</span> 1 bit per position (binary decision)<br>`;
+            }
+            
+            if (layers.includes('positions')) {
+                const posBits = Math.ceil(Math.log2(sequence.length));
+                bitsPerPosition += posBits;
+                encodingBreakdown += `<span class="highlight">Layer 3 - Position Indices:</span> ${posBits} bits per position<br>`;
+            }
+            
+            if (layers.includes('binary')) {
+                bitsPerPosition += 1;
+                encodingBreakdown += `<span class="highlight">Layer 4 - Binary Pattern:</span> 1 bit per position<br>`;
+            }
+            
+            if (layers.includes('loops')) {
+                bitsPerPosition += 3;
+                encodingBreakdown += `<span class="highlight">Layer 5 - Loop Number:</span> 3 bits per position (up to 8 loops)<br>`;
+            }
+            
+            const totalBits = bitsPerPosition * sequence.length;
+            const totalBytes = Math.floor(totalBits / 8);
+            const messageBits = message.length * 8;
+            const efficiency = (messageBits / totalBits * 100).toFixed(1);
+            
+            encodingBreakdown += `<br><strong>Total Capacity:</strong> ${bitsPerPosition} bits/position × ${sequence.length} positions = <span class="highlight">${totalBits} bits (${totalBytes} bytes)</span><br>`;
+            encodingBreakdown += `<strong>Message Size:</strong> "${message}" = ${messageBits} bits (${message.length} bytes)<br>`;
+            encodingBreakdown += `<strong>Efficiency:</strong> Using ${efficiency}% of available capacity<br>`;
+            encodingBreakdown += `<br><strong>Comparison:</strong> Traditional encoding would use ~${message.length * 8} bits. `;
+            encodingBreakdown += `Recamán multi-layer encoding provides ${(totalBits / (message.length * 8)).toFixed(1)}x more capacity!<br>`;
+            
+            // Encode message into sequence
+            const encoded = [];
+            for (let i = 0; i < Math.min(message.length, sequence.length); i++) {
+                const charCode = message.charCodeAt(i);
+                const val = sequence[i];
+                const op = operations[i] === 'add' ? 1 : 0;
+                
+                encoded.push({
+                    char: message[i],
+                    charCode,
+                    seqVal: val,
+                    operation: op,
+                    position: i,
+                    combined: (val << 8) | charCode
+                });
+            }
+            
+            encodingBreakdown += `<br><strong>Encoded Data Sample:</strong><br>`;
+            encoded.slice(0, 10).forEach(e => {
+                encodingBreakdown += `'${e.char}' → [Val:${e.seqVal}, Op:${e.operation}, Pos:${e.position}] = 0x${e.combined.toString(16).toUpperCase()}<br>`;
+            });
+            
+            document.getElementById('encodingOutput').innerHTML = encodingBreakdown;
+            
+            // Visualize encoding
+            drawEncodingViz(sequence, operations, encoded);
+            updateEncodingStats(bitsPerPosition, totalBits, messageBits, layers.length);
+        }
+
+        function drawEncodingViz(sequence, operations, encoded) {
+            const canvas = document.getElementById('encodingViz');
+            const ctx = canvas.getContext('2d');
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            
+            // Draw sequence as data stream
+            const barWidth = Math.min(20, canvas.width / sequence.length);
+            const maxVal = Math.max(...sequence);
+            
+            // Layer 1: Sequence values
+            ctx.fillStyle = 'rgba(102, 126, 234, 0.3)';
+            ctx.fillRect(10, 10, canvas.width - 20, 100);
+            ctx.fillStyle = '#333';
+            ctx.font = 'bold 12px Arial';
+            ctx.fillText('Layer 1: Sequence Values', 15, 25);
+            
+            sequence.forEach((val, i) => {
+                const x = 15 + i * barWidth;
+                const height = (val / maxVal) * 80;
+                const y = 110 - height;
+                ctx.fillStyle = `hsl(${(i/sequence.length)*280}, 70%, 50%)`;
+                ctx.fillRect(x, y, Math.max(1, barWidth-2), height);
+            });
+            
+            // Layer 2: Operations
+            ctx.fillStyle = 'rgba(231, 76, 60, 0.3)';
+            ctx.fillRect(10, 130, canvas.width - 20, 60);
+            ctx.fillStyle = '#333';
+            ctx.fillText('Layer 2: Add/Subtract Operations', 15, 145);
+            
+            operations.forEach((op, i) => {
+                const x = 15 + i * barWidth;
+                const height = op === 'add' ? 40 : 20;
+                const y = 190 - height;
+                ctx.fillStyle = op === 'add' ? '#e74c3c' : '#3498db';
+                ctx.fillRect(x, y, Math.max(1, barWidth-2), height);
+            });
+            
+            // Layer 3: Encoded message
+            if (encoded.length > 0) {
+                ctx.fillStyle = 'rgba(46, 204, 113, 0.3)';
+                ctx.fillRect(10, 210, canvas.width - 20, 80);
+                ctx.fillStyle = '#333';
+                ctx.fillText('Layer 3: Encoded Message Characters', 15, 225);
+                
+                encoded.forEach((e, i) => {
+                    const x = 15 + i * barWidth;
+                    const height = (e.charCode / 128) * 60;
+                    const y = 290 - height;
+                    ctx.fillStyle = '#2ecc71';
+                    ctx.fillRect(x, y, Math.max(1, barWidth-2), height);
+                    
+                    if (barWidth > 10) {
+                        ctx.fillStyle = '#333';
+                        ctx.font = '10px Arial';
+                        ctx.fillText(e.char, x, y - 5);
+                    }
+                });
+            }
+            
+            // Layer 4: Combined visualization
+            ctx.fillStyle = 'rgba(155, 89, 182, 0.3)';
+            ctx.fillRect(10, 310, canvas.width - 20, 80);
+            ctx.fillStyle = '#333';
+            ctx.fillText('Layer 4: Combined Multi-Layer Signal', 15, 325);
+            
+            sequence.forEach((val, i) => {
+                const x = 15 + i * barWidth;
+                const base = 390;
+                const seqHeight = (val / maxVal) * 30;
+                const opHeight = operations[i] === 'add' ? 20 : 10;
+                const encHeight = encoded[i] ? (encoded[i].charCode / 128) * 20 : 0;
+                const totalHeight = seqHeight + opHeight + encHeight;
+                
+                const gradient = ctx.createLinearGradient(x, base - totalHeight, x, base);
+                gradient.addColorStop(0, '#667eea');
+                gradient.addColorStop(0.5, '#e74c3c');
+                gradient.addColorStop(1, '#2ecc71');
+                
+                ctx.fillStyle = gradient;
+                ctx.fillRect(x, base - totalHeight, Math.max(1, barWidth-2), totalHeight);
+            });
+        }
+
+        function updateEncodingStats(bitsPerPos, totalBits, messageBits, layerCount) {
+            const html = `
+                <div class="stat-box">
+                    <div class="stat-label">Active Layers</div>
+                    <div class="stat-value">${layerCount}</div>
+                </div>
+                <div class="stat-box">
+                    <div class="stat-label">Bits/Position</div>
+                    <div class="stat-value">${bitsPerPos}</div>
+                </div>
+                <div class="stat-box">
+                    <div class="stat-label">Total Capacity</div>
+                    <div class="stat-value">${totalBits} bits</div>
+                </div>
+                <div class="stat-box">
+                    <div class="stat-label">Message Size</div>
+                    <div class="stat-value">${messageBits} bits</div>
+                </div>
+                <div class="stat-box">
+                    <div class="stat-label">Efficiency</div>
+                    <div class="stat-value">${(messageBits/totalBits*100).toFixed(1)}%</div>
+                </div>
+                <div class="stat-box">
+                    <div class="stat-label">Multiplier</div>
+                    <div class="stat-value">${(totalBits/messageBits).toFixed(1)}x</div>
+                </div>
+            `;
+            document.getElementById('encodingStats').innerHTML = html;
+        }
+
+        // Event listeners for sliders
+        document.querySelectorAll('input[type="range"]').forEach(slider => {
+            slider.addEventListener('input', function() {
+                const valueId = this.id + 'Value';
+                let value = this.value;
+                
+                if (this.id.includes('gridSize')) value += 'x' + value;
+                else if (this.id.includes('Loops')) value += ' loops';
+                else if (this.id.includes('Terms') || this.id === 'searchTerms') value += '';
+                
+                const display = document.getElementById(valueId);
+                if (display) display.textContent = value;
+            });
+        });
+
+        // Initialize
+        generateSearch();
+        generateRecursive();
+        encodeData();
+    </script>
+</body>
+</html>

@@ -1,0 +1,1091 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Cthulhu's Naptime - Don't Get Caught!</title>
+  <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;700&family=Special+Elite&display=swap" rel="stylesheet">
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      min-height: 100vh;
+      background: linear-gradient(180deg, #0a0a12 0%, #0d1a2d 30%, #0a2a3a 60%, #051520 100%);
+      font-family: 'Special Elite', monospace;
+      overflow-x: hidden;
+      position: relative;
+    }
+
+    .particles {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      pointer-events: none;
+      z-index: 1;
+    }
+
+    .particle {
+      position: absolute;
+      background: radial-gradient(circle, rgba(64, 224, 208, 0.8) 0%, transparent 70%);
+      border-radius: 50%;
+      animation: float 8s infinite ease-in-out;
+    }
+
+    @keyframes float {
+      0%, 100% { transform: translateY(0) scale(1); opacity: 0.3; }
+      50% { transform: translateY(-30px) scale(1.2); opacity: 0.7; }
+    }
+
+    .game-container {
+      position: relative;
+      z-index: 10;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 15px;
+      min-height: 100vh;
+    }
+
+    h1 {
+      font-family: 'Cinzel', serif;
+      font-size: clamp(1.5rem, 4vw, 2.5rem);
+      color: #40e0d0;
+      text-shadow: 0 0 20px rgba(64, 224, 208, 0.5);
+      margin: 10px 0;
+      text-align: center;
+      letter-spacing: 3px;
+      animation: glow 3s infinite alternate;
+    }
+
+    @keyframes glow {
+      from { text-shadow: 0 0 20px rgba(64, 224, 208, 0.5); }
+      to { text-shadow: 0 0 30px rgba(64, 224, 208, 0.8), 0 0 60px rgba(64, 224, 208, 0.4); }
+    }
+
+    /* Meters container */
+    .meters {
+      width: 90%;
+      max-width: 400px;
+      margin: 10px 0;
+    }
+
+    .meter-row {
+      margin-bottom: 12px;
+    }
+
+    .meter-label {
+      color: #8fbc8f;
+      font-size: 0.8rem;
+      margin-bottom: 5px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .meter-label.danger {
+      color: #ff6b6b;
+    }
+
+    .meter-bar {
+      height: 16px;
+      background: rgba(0, 0, 0, 0.5);
+      border: 2px solid #2f4f4f;
+      border-radius: 8px;
+      overflow: hidden;
+      position: relative;
+    }
+
+    .meter-bar.danger {
+      border-color: #8b0000;
+    }
+
+    .meter-fill {
+      height: 100%;
+      width: 0%;
+      border-radius: 6px;
+      transition: width 0.3s ease-out;
+      position: relative;
+    }
+
+    .meter-fill.sleep {
+      background: linear-gradient(90deg, #1a4a5e, #40e0d0, #98fb98);
+    }
+
+    .meter-fill.trouble {
+      background: linear-gradient(90deg, #8b4513, #ff6b6b, #ff0000);
+    }
+
+    .meter-fill::after {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: linear-gradient(90deg, transparent, rgba(255,255,255,0.3), transparent);
+      animation: shimmer 2s infinite;
+    }
+
+    @keyframes shimmer {
+      0% { transform: translateX(-100%); }
+      100% { transform: translateX(100%); }
+    }
+
+    /* Cthulhu area */
+    .cthulhu-container {
+      position: relative;
+      width: 260px;
+      height: 260px;
+      margin: 5px 0;
+    }
+
+    .cthulhu {
+      width: 100%;
+      height: 100%;
+      position: relative;
+      transition: all 0.5s ease;
+    }
+
+    .cthulhu-body {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      width: 130px;
+      height: 150px;
+      background: linear-gradient(180deg, #1a4a3a 0%, #0d2d25 100%);
+      border-radius: 50% 50% 45% 45%;
+      box-shadow: 0 0 40px rgba(64, 224, 208, 0.3), inset 0 -20px 40px rgba(0,0,0,0.5);
+      transition: all 0.3s ease;
+    }
+
+    .cthulhu.distracted .cthulhu-body {
+      box-shadow: 0 0 40px rgba(255, 215, 0, 0.5), inset 0 -20px 40px rgba(0,0,0,0.5);
+    }
+
+    .cthulhu-head {
+      position: absolute;
+      top: 20px;
+      left: 50%;
+      transform: translateX(-50%);
+      width: 95px;
+      height: 85px;
+      background: linear-gradient(180deg, #2a5a4a 0%, #1a4a3a 100%);
+      border-radius: 50% 50% 40% 40%;
+    }
+
+    .eyes {
+      position: absolute;
+      top: 22px;
+      left: 50%;
+      transform: translateX(-50%);
+      display: flex;
+      gap: 22px;
+    }
+
+    .eye {
+      width: 26px;
+      height: 26px;
+      background: radial-gradient(circle, #ff6b6b 0%, #8b0000 50%, #2d0a0a 100%);
+      border-radius: 50%;
+      position: relative;
+      box-shadow: 0 0 15px rgba(255, 107, 107, 0.8);
+      transition: all 0.3s ease;
+    }
+
+    .eye::after {
+      content: '';
+      position: absolute;
+      top: 7px;
+      left: 7px;
+      width: 7px;
+      height: 7px;
+      background: #fff;
+      border-radius: 50%;
+      opacity: 0.8;
+    }
+
+    .cthulhu.distracted .eye {
+      width: 32px;
+      height: 32px;
+      background: radial-gradient(circle, #ffd700 0%, #ff8c00 50%, #8b4513 100%);
+      box-shadow: 0 0 20px rgba(255, 215, 0, 0.9);
+      animation: excited-eyes 0.5s infinite alternate;
+    }
+
+    @keyframes excited-eyes {
+      from { transform: scale(1); }
+      to { transform: scale(1.1); }
+    }
+
+    .cthulhu.sleepy .eye {
+      height: 8px;
+      background: linear-gradient(180deg, #ff6b6b 0%, #8b0000 100%);
+    }
+
+    .cthulhu.asleep .eye {
+      height: 3px;
+      background: #1a4a3a;
+      box-shadow: none;
+    }
+
+    .tentacles {
+      position: absolute;
+      top: 52px;
+      left: 50%;
+      transform: translateX(-50%);
+      display: flex;
+      gap: 4px;
+    }
+
+    .tentacle {
+      width: 9px;
+      height: 45px;
+      background: linear-gradient(180deg, #2a5a4a, #1a4a3a);
+      border-radius: 0 0 50% 50%;
+      transform-origin: top center;
+      animation: wiggle 2s infinite ease-in-out;
+    }
+
+    .tentacle:nth-child(1) { animation-delay: 0s; height: 38px; }
+    .tentacle:nth-child(2) { animation-delay: 0.2s; height: 45px; }
+    .tentacle:nth-child(3) { animation-delay: 0.4s; height: 50px; }
+    .tentacle:nth-child(4) { animation-delay: 0.6s; height: 45px; }
+    .tentacle:nth-child(5) { animation-delay: 0.8s; height: 40px; }
+    .tentacle:nth-child(6) { animation-delay: 1s; height: 35px; }
+
+    @keyframes wiggle {
+      0%, 100% { transform: rotate(-10deg); }
+      50% { transform: rotate(10deg); }
+    }
+
+    .cthulhu.distracted .tentacle {
+      animation: wiggle-fast 0.5s infinite ease-in-out;
+    }
+
+    @keyframes wiggle-fast {
+      0%, 100% { transform: rotate(-15deg); }
+      50% { transform: rotate(15deg); }
+    }
+
+    .cthulhu.asleep .tentacle {
+      animation: wiggle-slow 4s infinite ease-in-out;
+    }
+
+    @keyframes wiggle-slow {
+      0%, 100% { transform: rotate(-3deg); }
+      50% { transform: rotate(3deg); }
+    }
+
+    .wing {
+      position: absolute;
+      top: 75px;
+      width: 55px;
+      height: 75px;
+      background: linear-gradient(180deg, rgba(42, 90, 74, 0.8), rgba(26, 74, 58, 0.6));
+      border-radius: 80% 20% 50% 50%;
+      animation: flap 3s infinite ease-in-out;
+    }
+
+    .wing.left {
+      left: 20px;
+      transform-origin: right center;
+    }
+
+    .wing.right {
+      right: 20px;
+      transform-origin: left center;
+      border-radius: 20% 80% 50% 50%;
+    }
+
+    @keyframes flap {
+      0%, 100% { transform: rotate(-5deg) scaleX(1); }
+      50% { transform: rotate(5deg) scaleX(0.9); }
+    }
+
+    .cthulhu.distracted .wing {
+      animation: flap-excited 0.8s infinite ease-in-out;
+    }
+
+    @keyframes flap-excited {
+      0%, 100% { transform: rotate(-15deg) scaleX(1); }
+      50% { transform: rotate(15deg) scaleX(0.85); }
+    }
+
+    .zzz {
+      position: absolute;
+      top: -10px;
+      right: 25px;
+      font-family: 'Cinzel', serif;
+      font-size: 1.4rem;
+      color: #40e0d0;
+      opacity: 0;
+      text-shadow: 0 0 10px rgba(64, 224, 208, 0.8);
+    }
+
+    .cthulhu.asleep .zzz {
+      animation: zzz-float 2s infinite;
+    }
+
+    @keyframes zzz-float {
+      0% { opacity: 0; transform: translateY(0) scale(0.5); }
+      50% { opacity: 1; }
+      100% { opacity: 0; transform: translateY(-40px) scale(1.2); }
+    }
+
+    /* Contraband item floating */
+    .contraband {
+      position: absolute;
+      font-size: 2.5rem;
+      opacity: 0;
+      pointer-events: none;
+      z-index: 20;
+      filter: drop-shadow(0 0 10px rgba(255, 215, 0, 0.8));
+      transition: opacity 0.3s ease;
+    }
+
+    .contraband.active {
+      opacity: 1;
+      pointer-events: all;
+      cursor: pointer;
+      animation: contraband-float 2s infinite ease-in-out;
+    }
+
+    @keyframes contraband-float {
+      0%, 100% { transform: translateY(0) rotate(-5deg); }
+      50% { transform: translateY(-10px) rotate(5deg); }
+    }
+
+    .contraband:hover {
+      transform: scale(1.2);
+    }
+
+    /* Actions */
+    .actions {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 10px;
+      margin: 10px 0;
+      width: 90%;
+      max-width: 400px;
+    }
+
+    .action-btn {
+      background: linear-gradient(180deg, rgba(42, 90, 74, 0.8), rgba(26, 74, 58, 0.9));
+      border: 2px solid #40e0d0;
+      border-radius: 10px;
+      padding: 12px 8px;
+      color: #98fb98;
+      font-family: 'Special Elite', monospace;
+      font-size: 0.75rem;
+      cursor: pointer;
+      transition: all 0.3s ease;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .action-btn:hover:not(:disabled) {
+      background: linear-gradient(180deg, rgba(64, 224, 208, 0.3), rgba(42, 90, 74, 0.9));
+      transform: translateY(-2px);
+      box-shadow: 0 5px 20px rgba(64, 224, 208, 0.4);
+    }
+
+    .action-btn:disabled {
+      opacity: 0.4;
+      cursor: not-allowed;
+    }
+
+    .action-btn .icon {
+      font-size: 1.3rem;
+      display: block;
+      margin-bottom: 4px;
+    }
+
+    .action-btn.cooling::after {
+      content: '';
+      position: absolute;
+      bottom: 0;
+      left: 0;
+      height: 3px;
+      background: #40e0d0;
+      animation: cooldown 2s linear forwards;
+    }
+
+    @keyframes cooldown {
+      from { width: 100%; }
+      to { width: 0%; }
+    }
+
+    /* Hide contraband button - special */
+    .action-btn.hide-btn {
+      background: linear-gradient(180deg, rgba(139, 69, 19, 0.8), rgba(100, 50, 10, 0.9));
+      border-color: #ffd700;
+      color: #ffd700;
+      grid-column: span 2;
+    }
+
+    .action-btn.hide-btn:hover:not(:disabled) {
+      background: linear-gradient(180deg, rgba(255, 215, 0, 0.3), rgba(139, 69, 19, 0.9));
+      box-shadow: 0 5px 20px rgba(255, 215, 0, 0.4);
+    }
+
+    .action-btn.hide-btn:disabled {
+      opacity: 0.3;
+    }
+
+    /* Message */
+    .message {
+      background: rgba(0, 0, 0, 0.6);
+      border: 1px solid #2f4f4f;
+      border-radius: 10px;
+      padding: 12px 15px;
+      color: #8fbc8f;
+      font-size: 0.85rem;
+      text-align: center;
+      min-height: 50px;
+      width: 90%;
+      max-width: 400px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      line-height: 1.4;
+    }
+
+    .message.warning {
+      border-color: #8b0000;
+      color: #ff6b6b;
+      animation: pulse-warning 1s infinite;
+    }
+
+    @keyframes pulse-warning {
+      0%, 100% { background: rgba(139, 0, 0, 0.2); }
+      50% { background: rgba(139, 0, 0, 0.4); }
+    }
+
+    /* Bed */
+    .bed {
+      position: absolute;
+      bottom: 5px;
+      left: 50%;
+      transform: translateX(-50%);
+      width: 180px;
+      height: 35px;
+      background: linear-gradient(180deg, #1a0a2e, #0d0518);
+      border-radius: 8px;
+      border: 2px solid #2a1a4e;
+      z-index: -1;
+    }
+
+    .bed::before {
+      content: '';
+      position: absolute;
+      top: -12px;
+      left: 10px;
+      right: 10px;
+      height: 16px;
+      background: linear-gradient(180deg, #2a1a4e, #1a0a2e);
+      border-radius: 5px 5px 0 0;
+    }
+
+    /* Overlays */
+    .darkness-overlay {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: black;
+      opacity: 0;
+      pointer-events: none;
+      z-index: 5;
+      transition: opacity 0.5s ease;
+    }
+
+    /* Victory screen */
+    .overlay-screen {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      z-index: 100;
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 1s ease;
+    }
+
+    .overlay-screen.show {
+      opacity: 1;
+      pointer-events: all;
+    }
+
+    .victory-screen {
+      background: rgba(5, 21, 32, 0.95);
+    }
+
+    .gameover-screen {
+      background: rgba(50, 10, 10, 0.95);
+    }
+
+    .overlay-screen h2 {
+      font-family: 'Cinzel', serif;
+      font-size: 1.8rem;
+      text-shadow: 0 0 30px currentColor;
+      margin-bottom: 20px;
+      text-align: center;
+      padding: 0 20px;
+    }
+
+    .victory-screen h2 { color: #40e0d0; }
+    .gameover-screen h2 { color: #ff6b6b; }
+
+    .overlay-screen p {
+      font-size: 1rem;
+      text-align: center;
+      max-width: 300px;
+      line-height: 1.6;
+      margin-bottom: 25px;
+      padding: 0 20px;
+    }
+
+    .victory-screen p { color: #8fbc8f; }
+    .gameover-screen p { color: #ffb6c1; }
+
+    .overlay-btn {
+      border: none;
+      border-radius: 25px;
+      padding: 12px 35px;
+      font-family: 'Cinzel', serif;
+      font-size: 1.1rem;
+      font-weight: 700;
+      cursor: pointer;
+      transition: all 0.3s ease;
+    }
+
+    .sleep-btn {
+      background: linear-gradient(180deg, #40e0d0, #2a8a7a);
+      color: #051520;
+      box-shadow: 0 0 30px rgba(64, 224, 208, 0.5);
+    }
+
+    .retry-btn {
+      background: linear-gradient(180deg, #ff6b6b, #8b0000);
+      color: #fff;
+      box-shadow: 0 0 30px rgba(255, 107, 107, 0.5);
+    }
+
+    .overlay-btn:hover {
+      transform: scale(1.05);
+    }
+
+    /* Teacher warning */
+    .teacher-warning {
+      position: fixed;
+      top: 20px;
+      left: 50%;
+      transform: translateX(-50%);
+      background: rgba(139, 0, 0, 0.9);
+      border: 2px solid #ff6b6b;
+      border-radius: 10px;
+      padding: 10px 20px;
+      color: #fff;
+      font-size: 0.9rem;
+      z-index: 50;
+      opacity: 0;
+      transition: opacity 0.3s ease;
+      text-align: center;
+    }
+
+    .teacher-warning.show {
+      opacity: 1;
+      animation: shake 0.5s ease;
+    }
+
+    @keyframes shake {
+      0%, 100% { transform: translateX(-50%) rotate(0); }
+      25% { transform: translateX(-50%) rotate(-2deg); }
+      75% { transform: translateX(-50%) rotate(2deg); }
+    }
+
+    /* Footsteps indicator */
+    .footsteps {
+      position: fixed;
+      bottom: 20px;
+      right: 20px;
+      font-size: 1.5rem;
+      opacity: 0;
+      z-index: 50;
+    }
+
+    .footsteps.show {
+      opacity: 1;
+      animation: footstep-pulse 0.5s infinite;
+    }
+
+    @keyframes footstep-pulse {
+      0%, 100% { transform: scale(1); opacity: 0.5; }
+      50% { transform: scale(1.2); opacity: 1; }
+    }
+  </style>
+</head>
+<body>
+  <div class="particles" id="particles"></div>
+  <div class="darkness-overlay" id="darkness"></div>
+  
+  <div class="teacher-warning" id="teacherWarning">
+    👁️ Mrs. Marsh is looking this way... 👁️
+  </div>
+  
+  <div class="footsteps" id="footsteps">👣</div>
+
+  <div class="game-container">
+    <h1>✧ CTHULHU'S NAPTIME ✧</h1>
+    
+    <div class="meters">
+      <div class="meter-row">
+        <div class="meter-label">
+          <span>😴 Sleepiness</span>
+          <span id="sleepPercent">0%</span>
+        </div>
+        <div class="meter-bar">
+          <div class="meter-fill sleep" id="sleepFill"></div>
+        </div>
+      </div>
+      <div class="meter-row">
+        <div class="meter-label danger">
+          <span>⚠️ Trouble (Principal's Suspicion)</span>
+          <span id="troublePercent">0%</span>
+        </div>
+        <div class="meter-bar danger">
+          <div class="meter-fill trouble" id="troubleFill"></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="cthulhu-container">
+      <div class="cthulhu" id="cthulhu">
+        <div class="wing left"></div>
+        <div class="wing right"></div>
+        <div class="cthulhu-body">
+          <div class="cthulhu-head">
+            <div class="eyes">
+              <div class="eye"></div>
+              <div class="eye"></div>
+            </div>
+            <div class="tentacles">
+              <div class="tentacle"></div>
+              <div class="tentacle"></div>
+              <div class="tentacle"></div>
+              <div class="tentacle"></div>
+              <div class="tentacle"></div>
+              <div class="tentacle"></div>
+            </div>
+          </div>
+        </div>
+        <span class="zzz">Z</span>
+        <div class="bed"></div>
+        
+        <div class="contraband" id="contraband1" style="top: -20px; left: 20px;">📚</div>
+        <div class="contraband" id="contraband2" style="top: 30px; right: -10px;">🪄</div>
+        <div class="contraband" id="contraband3" style="bottom: 60px; left: -15px;">🦉</div>
+        <div class="contraband" id="contraband4" style="top: 10px; left: -20px;">⚡</div>
+        <div class="contraband" id="contraband5" style="bottom: 80px; right: -20px;">🧹</div>
+      </div>
+    </div>
+
+    <div class="actions">
+      <button class="action-btn" onclick="doAction('lullaby')" id="btn-lullaby">
+        <span class="icon">🎵</span>
+        Eldritch Lullaby
+      </button>
+      <button class="action-btn" onclick="doAction('lights')" id="btn-lights">
+        <span class="icon">🌑</span>
+        Dim the Abyss
+      </button>
+      <button class="action-btn" onclick="doAction('story')" id="btn-story">
+        <span class="icon">📖</span>
+        Bedtime Prophecy
+      </button>
+      <button class="action-btn" onclick="doAction('pet')" id="btn-pet">
+        <span class="icon">🐙</span>
+        Pat Tentacles
+      </button>
+      <button class="action-btn" onclick="doAction('sheep')" id="btn-sheep">
+        <span class="icon">🐑</span>
+        Count Deep Ones
+      </button>
+      <button class="action-btn" onclick="doAction('blanket')" id="btn-blanket">
+        <span class="icon">🌊</span>
+        Tuck In Darkness
+      </button>
+      <button class="action-btn hide-btn" onclick="hideContraband()" id="btn-hide" disabled>
+        <span class="icon">🙈</span>
+        QUICK! Hide the Contraband!
+      </button>
+    </div>
+
+    <div class="message" id="message">
+      Help Cthulhu sleep... but watch out for the stuff you smuggled in!
+    </div>
+  </div>
+
+  <div class="overlay-screen victory-screen" id="victory">
+    <h2>✧ CTHULHU SLEEPS ✧</h2>
+    <p>The Elder God dreams peacefully. The contraband is hidden. Mrs. Marsh suspects nothing.<br><br>Perhaps... you should join him?</p>
+    <button class="overlay-btn sleep-btn" onclick="playerSleep()">😴 Join the Dream</button>
+  </div>
+
+  <div class="overlay-screen gameover-screen" id="gameover">
+    <h2>☠️ CAUGHT! ☠️</h2>
+    <p id="gameoverText">Principal Morrison found the Harry Potter books. You're both in detention... in R'lyeh.</p>
+    <button class="overlay-btn retry-btn" onclick="restartGame()">🔄 Try Again</button>
+  </div>
+
+  <script>
+    let sleepiness = 0;
+    let trouble = 0;
+    let darkness = 0;
+    let isAsleep = false;
+    let gameOver = false;
+    let activeContraband = null;
+    let troubleInterval = null;
+    let contrabandInterval = null;
+    let distractionInterval = null;
+    let isDistracted = false;
+
+    const contrabandItems = [
+      { id: 'contraband1', name: 'Harry Potter books', msg: "\"What's a horcrux?\" Cthulhu's eyes widen with forbidden knowledge!" },
+      { id: 'contraband2', name: 'a wand', msg: "Cthulhu tries to cast Lumos. His tentacles glow ominously." },
+      { id: 'contraband3', name: 'Hedwig plushie', msg: "\"Can I keep it?\" The Elder God hugs the owl." },
+      { id: 'contraband4', name: 'lightning bolt sticker', msg: "Cthulhu sticks it on his forehead. He's the Chosen One now." },
+      { id: 'contraband5', name: 'toy broomstick', msg: "Cthulhu attempts to fly. The bed trembles." }
+    ];
+
+    const messages = {
+      lullaby: [
+        "Ph'nglui mglw'nafh... *yawn*... R'lyeh...",
+        "The cosmic frequencies soothe ancient ears...",
+        "A melody older than stars fills the room..."
+      ],
+      lights: [
+        "The void deepens... comfortable...",
+        "Darkness wraps around like an old friend...",
+        "The abyss grows cozy..."
+      ],
+      story: [
+        "\"Once upon an aeon, in R'lyeh...\"",
+        "\"...and the stars aligned perfectly...\"",
+        "\"...and everyone was consumed. The end.\""
+      ],
+      pet: [
+        "*happy eldritch burbling*",
+        "The tentacles curl contentedly...",
+        "A sound like underwater purring..."
+      ],
+      sheep: [
+        "One deep one... two deep ones...",
+        "...forty-seven... forty-eight...",
+        "The deep ones blur into dreams..."
+      ],
+      blanket: [
+        "Primordial darkness settles like a quilt...",
+        "Wrapped in the void's embrace...",
+        "Snug as a shoggoth in a sunken city..."
+      ]
+    };
+
+    const sleepGains = {
+      lullaby: 12,
+      lights: 10,
+      story: 14,
+      pet: 11,
+      sheep: 13,
+      blanket: 10
+    };
+
+    function createParticles() {
+      const container = document.getElementById('particles');
+      for (let i = 0; i < 25; i++) {
+        const particle = document.createElement('div');
+        particle.className = 'particle';
+        particle.style.left = Math.random() * 100 + '%';
+        particle.style.top = Math.random() * 100 + '%';
+        particle.style.width = (Math.random() * 6 + 3) + 'px';
+        particle.style.height = particle.style.width;
+        particle.style.animationDelay = Math.random() * 8 + 's';
+        particle.style.animationDuration = (Math.random() * 4 + 6) + 's';
+        container.appendChild(particle);
+      }
+    }
+
+    function startGame() {
+      // Trouble slowly increases over time
+      troubleInterval = setInterval(() => {
+        if (!gameOver && !isAsleep) {
+          addTrouble(0.5);
+        }
+      }, 1000);
+
+      // Contraband appears randomly
+      contrabandInterval = setInterval(() => {
+        if (!gameOver && !isAsleep && !activeContraband) {
+          if (Math.random() < 0.3) {
+            spawnContraband();
+          }
+        }
+      }, 4000);
+
+      // Initial contraband after 3 seconds
+      setTimeout(() => {
+        if (!gameOver && !isAsleep) spawnContraband();
+      }, 3000);
+    }
+
+    function spawnContraband() {
+      if (activeContraband) return;
+      
+      const item = contrabandItems[Math.floor(Math.random() * contrabandItems.length)];
+      activeContraband = item;
+      
+      const el = document.getElementById(item.id);
+      el.classList.add('active');
+      el.onclick = () => clickContraband(item);
+      
+      // Cthulhu gets distracted
+      setDistracted(true);
+      showMessage(item.msg, true);
+      document.getElementById('btn-hide').disabled = false;
+      
+      // Trouble increases faster while distracted
+      distractionInterval = setInterval(() => {
+        if (!gameOver && !isAsleep && activeContraband) {
+          addTrouble(2);
+        }
+      }, 500);
+
+      // Show teacher warning randomly
+      if (Math.random() < 0.4) {
+        showTeacherWarning();
+      }
+    }
+
+    function clickContraband(item) {
+      hideContraband();
+    }
+
+    function hideContraband() {
+      if (!activeContraband) return;
+      
+      const el = document.getElementById(activeContraband.id);
+      el.classList.remove('active');
+      el.onclick = null;
+      
+      activeContraband = null;
+      setDistracted(false);
+      
+      if (distractionInterval) {
+        clearInterval(distractionInterval);
+        distractionInterval = null;
+      }
+      
+      document.getElementById('btn-hide').disabled = true;
+      showMessage("Contraband hidden! Cthulhu yawns...");
+      
+      // Bonus sleepiness for quick hide
+      addSleep(5);
+    }
+
+    function setDistracted(distracted) {
+      isDistracted = distracted;
+      const cthulhu = document.getElementById('cthulhu');
+      if (distracted) {
+        cthulhu.classList.add('distracted');
+        cthulhu.classList.remove('sleepy');
+      } else {
+        cthulhu.classList.remove('distracted');
+        if (sleepiness >= 50) {
+          cthulhu.classList.add('sleepy');
+        }
+      }
+    }
+
+    function showTeacherWarning() {
+      const warning = document.getElementById('teacherWarning');
+      warning.classList.add('show');
+      document.getElementById('footsteps').classList.add('show');
+      
+      setTimeout(() => {
+        warning.classList.remove('show');
+        document.getElementById('footsteps').classList.remove('show');
+      }, 2000);
+    }
+
+    function addTrouble(amount) {
+      trouble = Math.min(100, trouble + amount);
+      document.getElementById('troubleFill').style.width = trouble + '%';
+      document.getElementById('troublePercent').textContent = Math.floor(trouble) + '%';
+      
+      if (trouble >= 100) {
+        triggerGameOver();
+      }
+    }
+
+    function addSleep(amount) {
+      if (isDistracted) {
+        amount = Math.floor(amount * 0.3); // Much less effective when distracted
+      }
+      sleepiness = Math.min(100, sleepiness + amount);
+      document.getElementById('sleepFill').style.width = sleepiness + '%';
+      document.getElementById('sleepPercent').textContent = Math.floor(sleepiness) + '%';
+      
+      const cthulhu = document.getElementById('cthulhu');
+      if (sleepiness >= 50 && !isDistracted) {
+        cthulhu.classList.add('sleepy');
+      }
+      
+      if (sleepiness >= 100) {
+        triggerVictory();
+      }
+    }
+
+    function doAction(action) {
+      if (gameOver || isAsleep) return;
+      
+      const btn = document.getElementById('btn-' + action);
+      if (btn.classList.contains('cooling')) return;
+      
+      btn.classList.add('cooling');
+      setTimeout(() => btn.classList.remove('cooling'), 2000);
+      
+      const gain = sleepGains[action] + Math.floor(Math.random() * 6);
+      addSleep(gain);
+      
+      if (!isDistracted) {
+        const msgs = messages[action];
+        const msg = msgs[Math.floor(Math.random() * msgs.length)];
+        showMessage(msg);
+      }
+      
+      if (action === 'lights') {
+        darkness = Math.min(0.3, darkness + 0.08);
+        document.getElementById('darkness').style.opacity = darkness;
+      }
+    }
+
+    function showMessage(msg, warning = false) {
+      const el = document.getElementById('message');
+      el.textContent = msg;
+      el.className = 'message' + (warning ? ' warning' : '');
+    }
+
+    function triggerVictory() {
+      isAsleep = true;
+      clearIntervals();
+      
+      if (activeContraband) {
+        const el = document.getElementById(activeContraband.id);
+        el.classList.remove('active');
+      }
+      
+      const cthulhu = document.getElementById('cthulhu');
+      cthulhu.classList.remove('sleepy', 'distracted');
+      cthulhu.classList.add('asleep');
+      
+      document.querySelectorAll('.action-btn').forEach(btn => btn.disabled = true);
+      
+      showMessage("The Great Old One sleeps... and dreams...");
+      
+      setTimeout(() => {
+        document.getElementById('victory').classList.add('show');
+      }, 2000);
+    }
+
+    function triggerGameOver() {
+      gameOver = true;
+      clearIntervals();
+      
+      const reasons = [
+        "Principal Morrison found the Harry Potter books under Cthulhu's pillow.",
+        "Mrs. Marsh spotted the wand. Detention in the Mariana Trench.",
+        "The owl plushie squeaked at the wrong moment. You're both expelled to R'lyeh.",
+        "Cthulhu shouted 'EXPELLIARMUS!' and woke everyone up.",
+        "The contraband was discovered. The deep ones are disappointed."
+      ];
+      
+      document.getElementById('gameoverText').textContent = 
+        reasons[Math.floor(Math.random() * reasons.length)];
+      document.getElementById('gameover').classList.add('show');
+    }
+
+    function clearIntervals() {
+      if (troubleInterval) clearInterval(troubleInterval);
+      if (contrabandInterval) clearInterval(contrabandInterval);
+      if (distractionInterval) clearInterval(distractionInterval);
+    }
+
+    function playerSleep() {
+      const dark = document.getElementById('darkness');
+      dark.style.transition = 'opacity 3s ease';
+      dark.style.opacity = 1;
+      
+      setTimeout(() => {
+        document.getElementById('victory').innerHTML = `
+          <h2 style="animation: glow 2s infinite alternate;">✧ SWEET DREAMS ✧</h2>
+          <p>In sleep, there is no F.<br>No contraband. No trouble.<br>Only the eternal curriculum.<br><br>Class dismissed.</p>
+        `;
+      }, 3000);
+    }
+
+    function restartGame() {
+      sleepiness = 0;
+      trouble = 0;
+      darkness = 0;
+      isAsleep = false;
+      gameOver = false;
+      activeContraband = null;
+      isDistracted = false;
+      
+      document.getElementById('sleepFill').style.width = '0%';
+      document.getElementById('sleepPercent').textContent = '0%';
+      document.getElementById('troubleFill').style.width = '0%';
+      document.getElementById('troublePercent').textContent = '0%';
+      document.getElementById('darkness').style.opacity = 0;
+      
+      const cthulhu = document.getElementById('cthulhu');
+      cthulhu.className = 'cthulhu';
+      
+      document.querySelectorAll('.contraband').forEach(el => {
+        el.classList.remove('active');
+        el.onclick = null;
+      });
+      
+      document.querySelectorAll('.action-btn').forEach(btn => {
+        btn.disabled = false;
+        btn.classList.remove('cooling');
+      });
+      document.getElementById('btn-hide').disabled = true;
+      
+      document.getElementById('gameover').classList.remove('show');
+      document.getElementById('victory').classList.remove('show');
+      
+      showMessage("Help Cthulhu sleep... but watch out for the stuff you smuggled in!");
+      
+      startGame();
+    }
+
+    // Initialize
+    createParticles();
+    startGame();
+  </script>
+</body>
+</html>

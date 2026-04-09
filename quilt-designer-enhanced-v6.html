@@ -1,0 +1,1479 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Quilt Designer</title>
+<style>
+
+:root{
+  --bg:#f5f5f5;
+  --card:#ffffff;
+  --text:#222;
+  --muted:#666;
+  --border:#ddd;
+  --accent:#2196F3;
+  --success:#4CAF50;
+  --warn:#ff9800;
+  --danger:#e53935;
+}
+*{box-sizing:border-box;}
+body{
+  font-family: system-ui, -apple-system, Segoe UI, Arial, sans-serif;
+  background:var(--bg);
+  margin:0;
+  padding:10px;
+  color:var(--text);
+  overscroll-behavior: none;
+}
+h2{margin:10px 0 14px; text-align:center;}
+
+.palette-bar{
+  display:flex;
+  justify-content:center;
+  align-items:center;
+  flex-wrap:wrap;
+  gap:8px;
+  padding:10px;
+  background:var(--card);
+  border:1px solid var(--border);
+  border-radius:10px;
+  max-width:1200px;
+  margin:0 auto 10px;
+}
+.swatch{
+  width:30px;
+  height:30px;
+  border-radius:999px;
+  border:2px solid transparent;
+  cursor:pointer;
+  transition:transform .08s ease;
+  box-shadow:0 1px 2px rgba(0,0,0,.08);
+}
+.swatch:hover{transform:scale(1.08);}
+.swatch.active{border-color:#111; transform:scale(1.08);}
+#customColorPicker{
+  width:34px; height:34px; padding:0;
+  border:none; background:transparent; cursor:pointer;
+}
+.controls{
+  display:flex;
+  flex-wrap:wrap;
+  justify-content:center;
+  gap:10px;
+  margin:0 auto 12px;
+  max-width:1200px;
+}
+button, select, label.file-btn{
+  padding:10px 14px;
+  border:1px solid var(--border);
+  border-radius:8px;
+  background:var(--card);
+  cursor:pointer;
+  font-weight:600;
+  box-shadow:0 2px 4px rgba(0,0,0,.05);
+  user-select:none;
+}
+button:hover, label.file-btn:hover{filter:brightness(0.98);}
+button:active{transform:translateY(1px);}
+button.active{background:#222; color:#fff; border-color:#222;}
+button:disabled{opacity:.55; cursor:not-allowed; box-shadow:none;}
+.small{padding:8px 10px; font-weight:600;}
+.group{display:flex; gap:8px; align-items:center; flex-wrap:wrap;}
+.transform-controls{
+  display:none;
+  gap:8px;
+  align-items:center;
+  padding:6px;
+  border-radius:10px;
+  border:1px solid rgba(76,175,80,.4);
+  background:rgba(76,175,80,.08);
+}
+.paste-active .transform-controls{display:flex;}
+
+.container{
+  display:flex;
+  gap:20px;
+  justify-content:center;
+  flex-wrap:wrap;
+  max-width:1600px;
+  margin:0 auto;
+}
+.panel{display:flex; flex-direction:column; gap:12px;}
+#minimap-container, #main-grid-container{
+  background:var(--card);
+  border:3px solid transparent;
+  border-radius:12px;
+  padding:14px;
+  box-shadow:0 4px 16px rgba(0,0,0,.08);
+}
+#main-grid-container.copy-mode{border-color:var(--accent);}
+#main-grid-container.paste-mode{border-color:var(--success);}
+
+#minimap{border:1px solid #eee; cursor:pointer; display:block;}
+#main-grid{display:grid; touch-action:none;}
+
+.cell{
+  border:0.5px solid rgba(0,0,0,0.12);
+  position:relative;
+  background:#fff;
+}
+.cell.diagonal::before{
+  content:'';
+  position:absolute;
+  inset:0;
+  background:linear-gradient(
+    to bottom right,
+    var(--c1) 0%,
+    var(--c1) 49.5%,
+    transparent 49.5%,
+    transparent 50.5%,
+    var(--c2) 50.5%,
+    var(--c2) 100%
+  );
+}
+.cell.diagonal.diag-backslash::before{
+  background:linear-gradient(
+    to bottom left,
+    var(--c1) 0%,
+    var(--c1) 49.5%,
+    transparent 49.5%,
+    transparent 50.5%,
+    var(--c2) 50.5%,
+    var(--c2) 100%
+  );
+}
+
+/* Quarter-square triangles (QST) */
+.cell.qst::before{
+  content:'';
+  position:absolute;
+  inset:0;
+  background:conic-gradient(
+    from calc(-45deg + var(--qrot, 0deg)),
+    var(--q1) 0deg 90deg,
+    var(--q2) 90deg 180deg,
+    var(--q3) 180deg 270deg,
+    var(--q4) 270deg 360deg
+  );
+}
+
+.cell.qst{ background: var(--q1); }
+.no-conic .cell.qst::before{ display:none; }
+
+.block-highlight{
+  position:absolute;
+  border:3px solid #ff4757;
+  pointer-events:none;
+  box-shadow:0 0 10px rgba(0,0,0,.18);
+  transition:all .12s ease;
+}
+
+.info{
+  background:var(--card);
+  border:1px solid var(--border);
+  border-radius:10px;
+  padding:12px 14px;
+  color:var(--muted);
+  max-width:520px;
+}
+
+kbd{
+  border:1px solid #cfcfcf;
+  border-bottom-width:2px;
+  border-radius:6px;
+  padding:1px 6px;
+  background:#fafafa;
+  font-family:ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace;
+  font-size:.9em;
+}
+
+/* Help Modal */
+.modal{
+  display:none;
+  position:fixed;
+  inset:0;
+  background:rgba(0,0,0,0.5);
+  z-index:1000;
+}
+.modal-content{
+  background:var(--card);
+  margin:6vh auto;
+  padding:20px 22px;
+  width:min(720px, 92vw);
+  border-radius:14px;
+  box-shadow:0 14px 30px rgba(0,0,0,.25);
+  max-height:88vh;
+  overflow:auto;
+}
+.close{
+  float:right;
+  font-size:28px;
+  cursor:pointer;
+  line-height:1;
+  padding:0 6px;
+}
+@media (max-width: 768px){
+  .container{flex-direction:column; align-items:center;}
+}
+
+/* Toast notifications */
+#toast{
+  position:fixed;
+  left:50%;
+  bottom:18px;
+  transform:translateX(-50%) translateY(20px);
+  opacity:0;
+  pointer-events:none;
+  padding:10px 14px;
+  border-radius:12px;
+  background:rgba(34,34,34,0.92);
+  color:#fff;
+  font-weight:700;
+  max-width:min(560px, 92vw);
+  text-align:center;
+  box-shadow:0 10px 24px rgba(0,0,0,.25);
+  transition:opacity .18s ease, transform .18s ease;
+  z-index:2000;
+}
+#toast.show{ opacity:1; transform:translateX(-50%) translateY(0); }
+#toast[data-type="warn"]{ background:rgba(255,152,0,.95); color:#111; }
+#toast[data-type="danger"]{ background:rgba(229,57,53,.95); color:#fff; }
+
+
+</style>
+</head>
+<body>
+
+<h2>Quilt Designer</h2>
+
+<div class="palette-bar" id="paletteBar" aria-label="Color palette">
+  <span style="font-weight:700; margin-right:4px;">Color</span>
+  <input type="color" id="customColorPicker" value="#000000" title="Custom color" aria-label="Custom color picker" />
+</div>
+
+<div class="controls" id="controlsBar">
+  <div class="group">
+    <button id="solidMode" class="active" title="Solid squares (S)">⬛ Solid</button>
+    <button id="diagonalMode" title="Half-square triangle (H)">◢ HST</button>
+    <button id="qstMode" title="Quarter-square triangle (Q)">◲ QST</button>
+  </div>
+
+  <div class="group">
+    <button id="undoBtn" class="small" title="Undo (Ctrl/Cmd+Z)">↶ Undo</button>
+    <button id="redoBtn" class="small" title="Redo (Ctrl/Cmd+Y / Ctrl/Cmd+Shift+Z)">↷ Redo</button>
+  </div>
+
+  <div class="group">
+    <button id="copyMode" title="Copy current block (C)">📋 Copy</button>
+    <button id="pasteMode" title="Paste copied block (V)" disabled>📌 Paste</button>
+
+    <div class="transform-controls" id="transformControls">
+      <button id="rotateBtn" class="small" title="Rotate clipboard 90°">↻</button>
+      <button id="flipHBtn" class="small" title="Flip clipboard horizontally">↔</button>
+      <button id="flipVBtn" class="small" title="Flip clipboard vertically">↕</button>
+      <button id="clearCopyBtn" class="small" title="Clear clipboard" style="color:var(--warn);">✕</button>
+    </div>
+  </div>
+
+  <div class="group">
+    <button id="rotBlockBtn" class="small" title="Rotate current block 90°">↻ Block</button>
+    <button id="flipBlockHBtn" class="small" title="Flip current block horizontally">↔ Block</button>
+    <button id="flipBlockVBtn" class="small" title="Flip current block vertically">↕ Block</button>
+  </div>
+
+  <div class="group">
+    <select id="blockDivision" title="Block division">
+      <option value="1">Full Grid (36×36)</option>
+      <option value="2">2×2 Blocks</option>
+      <option value="3">3×3 Blocks</option>
+      <option value="4">4×4 Blocks</option>
+      <option value="6" selected>6×6 Blocks</option>
+      <option value="9">9×9 Blocks</option>
+      <option value="12">12×12 Blocks</option>
+    </select>
+  </div>
+
+  <div class="group">
+    <button id="saveJsonBtn" title="Download project JSON">💾 Save JSON</button>
+    <label class="file-btn" for="fileInput" title="Load project JSON">📂 Load JSON</label>
+    <input type="file" id="fileInput" style="display:none" accept=".json" />
+  </div>
+
+  <div class="group">
+    <button id="clearBtn" title="Clear everything">🗑️ Clear</button>
+    <button id="exportBtn" title="Export full quilt as PNG">📷 Export PNG</button>
+    <button id="helpBtn" title="Help">❓ Help</button>
+  </div>
+</div>
+
+<div class="container">
+  <div class="panel">
+    <div id="minimap-container">
+      <h3 style="margin:0 0 10px;">Overview</h3>
+      <div style="position:relative">
+        <canvas id="minimap"></canvas>
+        <div class="block-highlight" id="highlight"></div>
+      </div>
+      <div style="margin-top:8px; color:var(--muted); font-size:0.95em;">
+        Click to jump to a block
+      </div>
+    </div>
+
+    <div class="info" aria-live="polite">
+      <div style="display:flex; gap:14px; flex-wrap:wrap;">
+        <div><strong>Block:</strong> <span id="currentBlock">—</span></div>
+        <div><strong>Pos:</strong> <span id="blockPos">—</span></div>
+      </div>
+      <div style="margin-top:8px;">
+        <strong>Mode:</strong> <span id="modeStatus">SOLID</span>
+      </div>
+      <div style="margin-top:8px;">
+        <strong>Tip:</strong> <span id="hintText">Pick a color, then paint.</span>
+      </div>
+      <div style="margin-top:10px; font-size:0.92em;">
+        Shortcuts: <kbd>S</kbd> solid, <kbd>H</kbd> HST, <kbd>Q</kbd> QST, <kbd>C</kbd> copy, <kbd>V</kbd> paste, <kbd>Esc</kbd> exit copy/paste.<br/>
+        In HST mode: click the triangle you want to color. Right‑click toggles the diagonal direction.
+      </div>
+    </div>
+  </div>
+
+  <div class="panel">
+    <div id="main-grid-container">
+      <h3 style="margin:0 0 10px;">Editor</h3>
+      <div id="main-grid"></div>
+    </div>
+  </div>
+</div>
+
+<div id="helpModal" class="modal" role="dialog" aria-modal="true" aria-label="Help">
+  <div class="modal-content">
+    <span class="close" id="helpClose" aria-label="Close help">&times;</span>
+    <h2 style="margin-top:0;">How to use</h2>
+    <ul>
+      <li><strong>Choose a color</strong> from the palette or the color picker.</li>
+      <li><strong>Solid</strong>: paints a full square.</li>
+      <li><strong>HST</strong>: paints the triangle you click. <strong>Right‑click</strong> a diagonal cell to toggle its direction.</li>
+      <li><strong>QST</strong>: paints one of 4 triangles. <strong>Right‑click</strong> a QST cell to rotate it.</li>
+      <li><strong>Copy</strong>: click anywhere in the editor to copy the current block.</li>
+      <li><strong>Paste</strong>: click anywhere in the editor to paste the clipboard into the current block. Use ↻/↔/↕ to transform the clipboard first.</li>
+      <li><strong>Undo/Redo</strong>: works for paint strokes and paste.</li>
+      <li><strong>Auto‑save</strong>: your work is saved in this browser automatically.</li>
+    </ul>
+    <p style="color:var(--muted); margin-bottom:0;">
+      Note: Export PNG exports the entire 36×36 design at high resolution.
+    </p>
+  </div>
+</div>
+
+<script>
+
+const TOTAL_SIZE = 36;
+const DEFAULT_PALETTE = [
+  '#ffffff','#000000','#808080',
+  '#e53935','#fb8c00','#fdd835',
+  '#43a047','#00897b','#1e88e5',
+  '#8e24aa','#3949ab','#6d4c41','#f06292'
+];
+const SAVE_KEY = 'quiltDesigner.autosave.v4';
+
+// Safe deep clone (structuredClone fallback)
+const clone = (obj) => {
+  if(obj === undefined) return undefined;
+  if(window.structuredClone) return structuredClone(obj);
+  return JSON.parse(JSON.stringify(obj));
+};
+
+const VALID_DIVISORS = [1,2,3,4,6,9,12];
+const MAX_HISTORY = 120;
+
+// Feature detect (QST uses conic-gradient)
+const SUPPORTS_CONIC = !!(window.CSS && CSS.supports && CSS.supports(
+  'background',
+  'conic-gradient(from 0deg, #000 0 90deg, #fff 90deg 180deg)'
+));
+document.documentElement.classList.toggle('no-conic', !SUPPORTS_CONIC);
+
+function sanitizeBlocksPerSide(n){
+  n = parseInt(n, 10);
+  if(!Number.isFinite(n) || n <= 0) n = 6;
+  if(!VALID_DIVISORS.includes(n)){
+    n = VALID_DIVISORS.reduce((best, d) =>
+      Math.abs(d - n) < Math.abs(best - n) ? d : best, 6);
+  }
+  return n;
+}
+
+function validIdx(idx){
+  return Number.isInteger(idx) && idx >= 0 && idx < TOTAL_SIZE * TOTAL_SIZE;
+}
+
+function showToast(msg, type='info', timeout=2800){
+  const el = document.getElementById('toast');
+  if(!el) return;
+  el.textContent = msg;
+  el.dataset.type = type;
+  el.classList.add('show');
+  clearTimeout(showToast._t);
+  showToast._t = setTimeout(() => el.classList.remove('show'), timeout);
+}
+
+
+let blocksPerSide = 6;
+let currentBlockRow = 0;
+let currentBlockCol = 0;
+let currentMode = 'solid'; // solid, diagonal, qst, copy, paste
+let activeColor = '#000000';
+let copiedBlock = null;
+
+let GRID_SIZE = 600;
+let gridData = [];
+
+let painting = false;
+let pointerId = null;
+
+const history = [];
+let historyPtr = -1;
+let staging = null;
+
+// --- DOM ---
+const paletteBar = document.getElementById('paletteBar');
+const customColorPicker = document.getElementById('customColorPicker');
+
+const mainGrid = document.getElementById('main-grid');
+const mainGridContainer = document.getElementById('main-grid-container');
+const minimap = document.getElementById('minimap');
+let minimapCtx = minimap.getContext('2d');
+const highlight = document.getElementById('highlight');
+
+const solidModeBtn = document.getElementById('solidMode');
+const diagonalModeBtn = document.getElementById('diagonalMode');
+const qstModeBtn = document.getElementById('qstMode');
+
+const copyModeBtn = document.getElementById('copyMode');
+const pasteModeBtn = document.getElementById('pasteMode');
+const rotateBtn = document.getElementById('rotateBtn');
+const flipHBtn = document.getElementById('flipHBtn');
+const flipVBtn = document.getElementById('flipVBtn');
+const clearCopyBtn = document.getElementById('clearCopyBtn');
+
+const rotBlockBtn = document.getElementById('rotBlockBtn');
+const flipBlockHBtn = document.getElementById('flipBlockHBtn');
+const flipBlockVBtn = document.getElementById('flipBlockVBtn');
+
+const undoBtn = document.getElementById('undoBtn');
+const redoBtn = document.getElementById('redoBtn');
+
+const blockDivision = document.getElementById('blockDivision');
+const saveJsonBtn = document.getElementById('saveJsonBtn');
+const fileInput = document.getElementById('fileInput');
+const clearBtn = document.getElementById('clearBtn');
+const exportBtn = document.getElementById('exportBtn');
+
+const currentBlockEl = document.getElementById('currentBlock');
+const blockPosEl = document.getElementById('blockPos');
+const modeStatusEl = document.getElementById('modeStatus');
+const hintTextEl = document.getElementById('hintText');
+
+const helpModal = document.getElementById('helpModal');
+const helpBtn = document.getElementById('helpBtn');
+const helpClose = document.getElementById('helpClose');
+
+// --- Helpers ---
+function normColor(c){
+  if(typeof c !== 'string') return '#ffffff';
+  c = c.trim().toLowerCase();
+  if(/^#[0-9a-f]{6}$/.test(c)) return c;
+  if(/^#[0-9a-f]{3}$/.test(c)) return '#' + c[1]+c[1]+c[2]+c[2]+c[3]+c[3];
+  return '#ffffff';
+}
+
+function clamp(n,min,max){ return Math.max(min, Math.min(max,n)); }
+function getBlockSize(){
+  blocksPerSide = sanitizeBlocksPerSide(blocksPerSide);
+  return TOTAL_SIZE / blocksPerSide;
+}
+
+// --- Cell factories ---
+// Solid: use c1/c2 for backward compatibility
+function makeCellSolid(color){
+  color = normColor(color);
+  return { isDiagonal:false, isQst:false, diag:'/', c1:color, c2:color };
+}
+function makeCellDiagonal(diag='/', c1='#ffffff', c2='#ffffff'){
+  c1 = normColor(c1); c2 = normColor(c2);
+  diag = (diag === '\\' || diag === '/') ? diag : '/';
+  return { isDiagonal:true, isQst:false, diag, c1, c2 };
+}
+// QST: q1..q4 represent TOP, RIGHT, BOTTOM, LEFT at qrot=0
+function makeCellQst(q1='#ffffff', q2='#ffffff', q3='#ffffff', q4='#ffffff', qrot=0){
+  q1=normColor(q1); q2=normColor(q2); q3=normColor(q3); q4=normColor(q4);
+  qrot = (parseInt(qrot,10)||0);
+  qrot = (((Math.round(qrot / 90) * 90) % 360) + 360) % 360;
+  return { isDiagonal:false, isQst:true, diag:'/', c1:q1, c2:q1, q1, q2, q3, q4, qrot };
+}
+
+function isCellQst(cell){
+  return !!(cell && (cell.isQst || ('q1' in cell && 'q2' in cell && 'q3' in cell && 'q4' in cell)));
+}
+
+// Convert QST base colors + qrot into displayed colors TOP/RIGHT/BOTTOM/LEFT
+function qstDisplayedColors(cell){
+  const base = [normColor(cell.q1), normColor(cell.q2), normColor(cell.q3), normColor(cell.q4)];
+  const shift = (((parseInt(cell.qrot,10)||0) / 90) % 4 + 4) % 4;
+  // displayed[i] = base[(i - shift) mod 4]
+  return [0,1,2,3].map(i => base[(i - shift + 4) % 4]);
+}
+
+// Determine which QST triangle was clicked (returns 0..3 corresponding to base q1..q4)
+function whichQstTriangle(cell, x, y, w, h){
+  const cx = w/2, cy = h/2;
+  const dx = x - cx, dy = y - cy;
+
+  // Match CSS conic-gradient angle system:
+  // 0deg points UP, angles increase CLOCKWISE.
+  let deg = (Math.atan2(dx, -dy) * 180 / Math.PI + 360) % 360;
+
+  const qrot = (((parseInt(cell.qrot,10) || 0) % 360) + 360) % 360;
+
+  // q1 is TOP when qrot=0 with a start boundary at -45deg (315deg).
+  const a = (deg - (315 + qrot) + 3600) % 360;
+  return Math.floor(a / 90); // 0 top, 1 right, 2 bottom, 3 left
+}
+
+function whichTriangle(diag, x, y, w, h){
+  // For '/', diagonal from top-right to bottom-left: x+y <= w is top-left region
+  if(diag === '/') return (x+y <= w) ? 'c1' : 'c2';
+  // For '\\', diagonal from top-left to bottom-right
+  return (y <= x) ? 'c1' : 'c2';
+}
+
+// --- History ---
+function clearHistory(){
+  history.length = 0;
+  historyPtr = -1;
+  staging = null;
+  updateUndoRedoButtons();
+}
+function beginHistory(){ staging = new Map(); }
+function recordChange(idx, before, after){
+  if(!staging) beginHistory();
+  const existing = staging.get(idx);
+  if(existing) existing.after = after;
+  else staging.set(idx, { before, after });
+}
+function commitHistory(){
+  if(!staging || staging.size === 0){ staging = null; return; }
+  history.splice(historyPtr + 1);
+  history.push(Array.from(staging.entries()).map(([idx, ch]) => ({ idx, before: ch.before, after: ch.after })));
+  historyPtr = history.length - 1;
+
+  // Keep memory under control
+  if(history.length > MAX_HISTORY){
+    history.shift();
+    historyPtr = history.length - 1;
+  }
+
+  staging = null;
+  updateUndoRedoButtons();
+  autosaveDebounced();
+}
+
+function undo(){
+  if(historyPtr < 0) return;
+  for(const {idx, before} of history[historyPtr]) gridData[idx] = clone(before);
+  historyPtr--;
+  updateUndoRedoButtons();
+  hintTextEl.textContent = '';
+  renderAll();
+  autosaveDebounced();
+}
+function redo(){
+  if(historyPtr >= history.length - 1) return;
+  historyPtr++;
+  for(const {idx, after} of history[historyPtr]) gridData[idx] = clone(after);
+  updateUndoRedoButtons();
+  hintTextEl.textContent = '';
+  renderAll();
+  autosaveDebounced();
+}
+function updateUndoRedoButtons(){
+  undoBtn.disabled = historyPtr < 0;
+  redoBtn.disabled = historyPtr >= history.length - 1;
+}
+
+// --- Palette ---
+function setupPalette(){
+  paletteBar.querySelectorAll('.swatch').forEach(n => n.remove());
+  for(const colorRaw of DEFAULT_PALETTE){
+    const color = normColor(colorRaw);
+    const sw = document.createElement('div');
+    sw.className = 'swatch';
+    sw.style.backgroundColor = color;
+    sw.dataset.color = color;
+    if(color === '#ffffff') sw.style.borderColor = '#cfcfcf';
+    sw.addEventListener('click', () => selectColor(color, sw));
+    paletteBar.insertBefore(sw, customColorPicker);
+  }
+  selectColor('#000000', paletteBar.querySelector('.swatch[data-color="#000000"]'));
+}
+function selectColor(color, swatch){
+  activeColor = normColor(color);
+  customColorPicker.value = activeColor;
+  paletteBar.querySelectorAll('.swatch').forEach(s => s.classList.remove('active'));
+  if(swatch) swatch.classList.add('active');
+}
+customColorPicker.addEventListener('input', (e) => {
+  activeColor = normColor(e.target.value);
+  paletteBar.querySelectorAll('.swatch').forEach(s => s.classList.remove('active'));
+});
+
+// --- HiDPI Canvas / Sizing ---
+function setupHiDPICanvas(canvas, cssSize){
+  const dpr = Math.max(1, window.devicePixelRatio || 1);
+  canvas.style.width = cssSize + 'px';
+  canvas.style.height = cssSize + 'px';
+  canvas.width = Math.round(cssSize * dpr);
+  canvas.height = Math.round(cssSize * dpr);
+  const ctx = canvas.getContext('2d');
+  ctx.setTransform(dpr,0,0,dpr,0,0);
+  return ctx;
+}
+function calculateGridSize(){
+  const available = Math.min(window.innerWidth - 40, 1600) / 2.15;
+  const maxSize = Math.min(available, window.innerHeight * 0.78);
+  GRID_SIZE = Math.max(340, Math.min(maxSize, 620));
+  minimapCtx = setupHiDPICanvas(minimap, GRID_SIZE);
+}
+
+// --- UI ---
+function setMode(m){
+  currentMode = m;
+  [solidModeBtn, diagonalModeBtn, qstModeBtn, copyModeBtn, pasteModeBtn].forEach(b => b.classList.remove('active'));
+  mainGridContainer.classList.remove('copy-mode','paste-mode');
+  document.body.classList.remove('paste-active');
+
+  if(m === 'solid'){ solidModeBtn.classList.add('active'); hintTextEl.textContent='Click/drag to paint solid squares.'; }
+  if(m === 'diagonal'){ diagonalModeBtn.classList.add('active'); hintTextEl.textContent='Click a triangle. Right-click toggles diagonal direction.'; }
+  if(m === 'qst'){ qstModeBtn.classList.add('active'); hintTextEl.textContent='Click one of 4 triangles. Right-click rotates a QST cell.'; }
+  if(m === 'copy'){ copyModeBtn.classList.add('active'); mainGridContainer.classList.add('copy-mode'); hintTextEl.textContent='Click editor to copy this block.'; }
+  if(m === 'paste'){ pasteModeBtn.classList.add('active'); mainGridContainer.classList.add('paste-mode'); document.body.classList.add('paste-active'); hintTextEl.textContent='Click editor to paste into this block.'; }
+
+  modeStatusEl.textContent = m.toUpperCase();
+
+  const hasClip = !!copiedBlock;
+  const sizeMatch = hasClip && (copiedBlock.size === getBlockSize());
+  pasteModeBtn.disabled = !sizeMatch;
+
+  // Allow transforming the clipboard even if the current block size doesn't match
+  rotateBtn.disabled = !hasClip;
+  flipHBtn.disabled = !hasClip;
+  flipVBtn.disabled = !hasClip;
+  clearCopyBtn.disabled = !hasClip;
+
+  if(hasClip && !sizeMatch){
+    pasteModeBtn.title = `Clipboard is ${copiedBlock.size}×${copiedBlock.size} — switch Block Division to match`;
+  } else {
+    pasteModeBtn.title = 'Paste copied block (V)';
+  }
+}
+function updateInfo(){
+  const totalBlocks = blocksPerSide * blocksPerSide;
+  const currentBlockNum = currentBlockRow * blocksPerSide + currentBlockCol + 1;
+  currentBlockEl.textContent = `${currentBlockNum} / ${totalBlocks}`;
+  blockPosEl.textContent = `R${currentBlockRow+1}, C${currentBlockCol+1}`;
+}
+
+// --- Render ---
+function renderMainBlock(){
+  mainGrid.innerHTML = '';
+  const blockSize = getBlockSize();
+  const cellSize = GRID_SIZE / blockSize;
+  mainGrid.style.gridTemplateColumns = `repeat(${blockSize}, ${cellSize}px)`;
+  mainGrid.style.width = GRID_SIZE + 'px';
+  mainGrid.style.height = GRID_SIZE + 'px';
+
+  const sr = currentBlockRow * blockSize;
+  const sc = currentBlockCol * blockSize;
+
+  for(let r=0;r<blockSize;r++){
+    for(let c=0;c<blockSize;c++){
+      const idx = (sr+r)*TOTAL_SIZE + (sc+c);
+      const d = gridData[idx] || makeCellSolid('#ffffff');
+
+      const cell = document.createElement('div');
+      cell.className = 'cell';
+      cell.dataset.idx = idx;
+      cell.style.width = cell.style.height = cellSize + 'px';
+
+      if(isCellQst(d)){
+        cell.classList.add('qst');
+        cell.style.setProperty('--q1', normColor(d.q1));
+        cell.style.setProperty('--q2', normColor(d.q2));
+        cell.style.setProperty('--q3', normColor(d.q3));
+        cell.style.setProperty('--q4', normColor(d.q4));
+        cell.style.setProperty('--qrot', ((parseInt(d.qrot,10)||0)%360) + 'deg');
+      } else if(d.isDiagonal){
+        cell.classList.add('diagonal');
+        if(d.diag === '\\') cell.classList.add('diag-backslash');
+        cell.style.setProperty('--c1', normColor(d.c1));
+        cell.style.setProperty('--c2', normColor(d.c2));
+      } else {
+        cell.style.background = normColor(d.c1);
+      }
+
+      mainGrid.appendChild(cell);
+    }
+  }
+  updateInfo();
+}
+
+function drawTri(ctx,p1,p2,p3,fill){
+  ctx.fillStyle=fill;
+  ctx.beginPath();
+  ctx.moveTo(p1[0],p1[1]);
+  ctx.lineTo(p2[0],p2[1]);
+  ctx.lineTo(p3[0],p3[1]);
+  ctx.closePath();
+  ctx.fill();
+}
+
+function renderMinimap(){
+  const cellSize = GRID_SIZE / TOTAL_SIZE;
+  minimapCtx.clearRect(0,0,GRID_SIZE,GRID_SIZE);
+
+  for(let idx=0; idx<gridData.length; idx++){
+    const d = gridData[idx] || makeCellSolid('#ffffff');
+    const r = Math.floor(idx / TOTAL_SIZE);
+    const c = idx % TOTAL_SIZE;
+    const x = c * cellSize;
+    const y = r * cellSize;
+
+    if(isCellQst(d)){
+      const cols = qstDisplayedColors(d); // [top,right,bottom,left]
+      const cx = x + cellSize/2;
+      const cy = y + cellSize/2;
+      // top
+      drawTri(minimapCtx, [x,y], [x+cellSize,y], [cx,cy], cols[0]);
+      // right
+      drawTri(minimapCtx, [x+cellSize,y], [x+cellSize,y+cellSize], [cx,cy], cols[1]);
+      // bottom
+      drawTri(minimapCtx, [x+cellSize,y+cellSize], [x,y+cellSize], [cx,cy], cols[2]);
+      // left
+      drawTri(minimapCtx, [x,y+cellSize], [x,y], [cx,cy], cols[3]);
+    } else if(!d.isDiagonal){
+      minimapCtx.fillStyle = normColor(d.c1);
+      minimapCtx.fillRect(x,y,cellSize,cellSize);
+    } else if(d.diag === '/'){
+      drawTri(minimapCtx,[x,y],[x+cellSize,y],[x,y+cellSize], normColor(d.c1));
+      drawTri(minimapCtx,[x+cellSize,y],[x+cellSize,y+cellSize],[x,y+cellSize], normColor(d.c2));
+    } else {
+      drawTri(minimapCtx,[x,y],[x+cellSize,y],[x+cellSize,y+cellSize], normColor(d.c1));
+      drawTri(minimapCtx,[x,y],[x,y+cellSize],[x+cellSize,y+cellSize], normColor(d.c2));
+    }
+  }
+
+  minimapCtx.strokeStyle='rgba(0,0,0,0.12)';
+  minimapCtx.beginPath();
+  const bs=getBlockSize();
+  for(let i=1;i<blocksPerSide;i++){
+    const pos=i*bs*cellSize;
+    minimapCtx.moveTo(pos,0); minimapCtx.lineTo(pos,GRID_SIZE);
+    minimapCtx.moveTo(0,pos); minimapCtx.lineTo(GRID_SIZE,pos);
+  }
+  minimapCtx.stroke();
+  updateHighlight();
+}
+
+function updateHighlight(){
+  const bs=getBlockSize();
+  const cellSize = GRID_SIZE / TOTAL_SIZE;
+  const px = bs*cellSize;
+  highlight.style.left = (currentBlockCol*px)+'px';
+  highlight.style.top = (currentBlockRow*px)+'px';
+  highlight.style.width = px+'px';
+  highlight.style.height = px+'px';
+}
+
+function renderAll(){ renderMainBlock(); renderMinimap(); }
+
+// --- Painting ---
+function cellLocalCoords(cellEl, clientX, clientY){
+  const rect=cellEl.getBoundingClientRect();
+  const x=clamp(clientX-rect.left,0,rect.width);
+  const y=clamp(clientY-rect.top,0,rect.height);
+  return {x,y,w:rect.width,h:rect.height};
+}
+
+function paintCell(idx, clientX, clientY, opts={}){
+  const {forceTriangle=null, shiftOpposite=false} = opts;
+  const before = clone(gridData[idx] || makeCellSolid('#ffffff'));
+  let d = gridData[idx] || makeCellSolid('#ffffff');
+
+  if(currentMode==='solid'){
+    d = makeCellSolid(activeColor);
+  } else if(currentMode==='diagonal'){
+    if(isCellQst(d)){
+      // convert QST to diagonal, preserve top displayed color as old
+      const oldColor = qstDisplayedColors(d)[0];
+      d = makeCellDiagonal('/', oldColor, '#ffffff');
+    } else if(!d.isDiagonal){
+      // Preserve the old solid color in c1 when converting to diagonal
+      const oldColor = normColor(d.c1);
+      d = makeCellDiagonal('/', oldColor, '#ffffff');
+    } else {
+      d = clone(d);
+    }
+
+    const cellEl = mainGrid.querySelector(`.cell[data-idx="${idx}"]`);
+    let tri = 'c1';
+    if(forceTriangle) tri = forceTriangle;
+    else if(cellEl){
+      const {x,y,w,h} = cellLocalCoords(cellEl, clientX, clientY);
+      tri = whichTriangle(d.diag, x, y, w, h);
+      if(shiftOpposite) tri = (tri === 'c1') ? 'c2' : 'c1';
+    }
+    if(tri==='c1') d.c1 = activeColor;
+    else d.c2 = activeColor;
+
+    d.isDiagonal = true;
+    d.isQst = false;
+
+    d.c1 = normColor(d.c1);
+    d.c2 = normColor(d.c2);
+  } else if(currentMode==='qst'){
+    if(!isCellQst(d)){
+      // Convert:
+      // - if solid: seed all 4 with old solid so it doesn't "lose" the existing color
+      // - otherwise start white
+      const seed = (!d.isDiagonal) ? normColor(d.c1) : '#ffffff';
+      d = makeCellQst(seed, seed, seed, seed, 0);
+    } else {
+      d = clone(d);
+    }
+
+    const cellEl = mainGrid.querySelector(`.cell[data-idx="${idx}"]`);
+    if(cellEl){
+      const {x,y,w,h} = cellLocalCoords(cellEl, clientX, clientY);
+      let t = whichQstTriangle(d, x, y, w, h); // 0..3 base
+      if(shiftOpposite) t = (t + 2) % 4;
+      if(t === 0) d.q1 = activeColor;
+      if(t === 1) d.q2 = activeColor;
+      if(t === 2) d.q3 = activeColor;
+      if(t === 3) d.q4 = activeColor;
+
+      d.q1 = normColor(d.q1); d.q2 = normColor(d.q2); d.q3 = normColor(d.q3); d.q4 = normColor(d.q4);
+      d.isQst = true;
+      d.isDiagonal = false;
+    }
+  } else {
+    return;
+  }
+
+  gridData[idx] = d;
+  recordChange(idx, before, clone(d));
+}
+
+// --- Copy / Paste ---
+function copyCurrentBlock(){
+  const size=getBlockSize();
+  const sr=currentBlockRow*size;
+  const sc=currentBlockCol*size;
+  const cells=[];
+  for(let r=0;r<size;r++){
+    for(let c=0;c<size;c++){
+      const idx=(sr+r)*TOTAL_SIZE + (sc+c);
+      cells.push(clone(gridData[idx] || makeCellSolid('#ffffff')));
+    }
+  }
+  copiedBlock={size, cells};
+  setMode('paste');
+}
+function pasteCurrentBlock(){
+  if(!copiedBlock) return;
+  const size = getBlockSize();
+
+  if(!Array.isArray(copiedBlock.cells) || copiedBlock.cells.length !== copiedBlock.size * copiedBlock.size){
+    showToast('⚠️ Clipboard data is invalid. Copy again.', 'warn', 4200);
+    return;
+  }
+  if(size !== copiedBlock.size){
+    showToast(`Clipboard is ${copiedBlock.size}×${copiedBlock.size}. Switch Block Division to paste.`, 'warn', 4200);
+    return;
+  }
+
+  beginHistory();
+  const sr = currentBlockRow * size;
+  const sc = currentBlockCol * size;
+
+  let i = 0;
+  for(let r=0;r<size;r++){
+    for(let c=0;c<size;c++){
+      const idx = (sr+r)*TOTAL_SIZE + (sc+c);
+      const before = clone(gridData[idx] || makeCellSolid('#ffffff'));
+      const after = clone(copiedBlock.cells[i++]);
+      gridData[idx] = after;
+      recordChange(idx, before, after);
+    }
+  }
+  commitHistory();
+  renderAll();
+}
+
+
+// --- Cell transforms (clipboard + block) ---
+function qstToAbs(cell){
+  // base order: top,right,bottom,left at qrot=0
+  const base = [normColor(cell.q1), normColor(cell.q2), normColor(cell.q3), normColor(cell.q4)];
+  const shift = (((parseInt(cell.qrot,10)||0) / 90) % 4 + 4) % 4;
+  return [0,1,2,3].map(i => base[(i - shift + 4) % 4]);
+}
+function absToQst(abs){
+  return makeCellQst(abs[0], abs[1], abs[2], abs[3], 0);
+}
+
+function transformCellRotate90(cell){
+  cell = cell || makeCellSolid('#ffffff');
+  if(isCellQst(cell)){
+    const abs = qstToAbs(cell);
+    const neu = [abs[3], abs[0], abs[1], abs[2]]; // CW rotate
+    return absToQst(neu);
+  }
+  if(!cell.isDiagonal) return clone(cell);
+  const out=clone(cell);
+  if(out.diag==='/'){ out.diag='\\'; }
+  else { out.diag='/'; const t=out.c1; out.c1=out.c2; out.c2=t; }
+  out.c1 = normColor(out.c1); out.c2 = normColor(out.c2);
+  return out;
+}
+function transformCellFlipH(cell){
+  cell = cell || makeCellSolid('#ffffff');
+  if(isCellQst(cell)){
+    const abs = qstToAbs(cell);
+    const neu = [abs[0], abs[3], abs[2], abs[1]]; // swap left/right
+    return absToQst(neu);
+  }
+  if(!cell.isDiagonal) return clone(cell);
+  const out=clone(cell);
+  out.diag = (out.diag==='/') ? '\\' : '/';
+  out.c1 = normColor(out.c1); out.c2 = normColor(out.c2);
+  return out;
+}
+function transformCellFlipV(cell){
+  cell = cell || makeCellSolid('#ffffff');
+  if(isCellQst(cell)){
+    const abs = qstToAbs(cell);
+    const neu = [abs[2], abs[1], abs[0], abs[3]]; // swap top/bottom
+    return absToQst(neu);
+  }
+  if(!cell.isDiagonal) return clone(cell);
+  const out=clone(cell);
+  out.diag = (out.diag==='/') ? '\\' : '/';
+  const t=out.c1; out.c1=out.c2; out.c2=t;
+  out.c1 = normColor(out.c1); out.c2 = normColor(out.c2);
+  return out;
+}
+
+function rotateClipboard90(){
+  if(!copiedBlock) return;
+  const n = copiedBlock.size;
+  const old = copiedBlock.cells;
+  if(!Array.isArray(old) || old.length !== n*n){
+    showToast('⚠️ Clipboard data is invalid. Copy again.', 'warn', 4200);
+    return;
+  }
+  const neu = new Array(n*n);
+  for(let r=0;r<n;r++) for(let c=0;c<n;c++){
+    const oldIdx=r*n+c;
+    const newIdx=c*n+(n-1-r);
+    neu[newIdx]=transformCellRotate90(old[oldIdx]);
+  }
+  copiedBlock.cells=neu;
+}
+function flipClipboardH(){
+  if(!copiedBlock) return;
+  const n = copiedBlock.size;
+  const old = copiedBlock.cells;
+  if(!Array.isArray(old) || old.length !== n*n){
+    showToast('⚠️ Clipboard data is invalid. Copy again.', 'warn', 4200);
+    return;
+  }
+  const neu = new Array(n*n);
+  for(let r=0;r<n;r++) for(let c=0;c<n;c++){
+    const oldIdx=r*n+c;
+    const newIdx=r*n+(n-1-c);
+    neu[newIdx]=transformCellFlipH(old[oldIdx]);
+  }
+  copiedBlock.cells=neu;
+}
+function flipClipboardV(){
+  if(!copiedBlock) return;
+  const n = copiedBlock.size;
+  const old = copiedBlock.cells;
+  if(!Array.isArray(old) || old.length !== n*n){
+    showToast('⚠️ Clipboard data is invalid. Copy again.', 'warn', 4200);
+    return;
+  }
+  const neu = new Array(n*n);
+  for(let r=0;r<n;r++) for(let c=0;c<n;c++){
+    const oldIdx=r*n+c;
+    const newIdx=(n-1-r)*n+c;
+    neu[newIdx]=transformCellFlipV(old[oldIdx]);
+  }
+  copiedBlock.cells=neu;
+}
+
+// --- Block transforms ---
+function transformCurrentBlock(kind){
+  const n = getBlockSize();
+  const sr=currentBlockRow*n;
+  const sc=currentBlockCol*n;
+
+  // snapshot
+  const old = new Array(n*n);
+  for(let r=0;r<n;r++) for(let c=0;c<n;c++){
+    old[r*n+c] = clone(gridData[(sr+r)*TOTAL_SIZE + (sc+c)] || makeCellSolid('#ffffff'));
+  }
+
+  const neu = new Array(n*n);
+  for(let r=0;r<n;r++) for(let c=0;c<n;c++){
+    const oldIdx=r*n+c;
+    let newIdx=oldIdx;
+    let cell = old[oldIdx];
+
+    if(kind==='rot90'){
+      newIdx = c*n + (n-1-r);
+      cell = transformCellRotate90(cell);
+    } else if(kind==='flipH'){
+      newIdx = r*n + (n-1-c);
+      cell = transformCellFlipH(cell);
+    } else if(kind==='flipV'){
+      newIdx = (n-1-r)*n + c;
+      cell = transformCellFlipV(cell);
+    }
+    neu[newIdx] = cell;
+  }
+
+  beginHistory();
+  for(let r=0;r<n;r++) for(let c=0;c<n;c++){
+    const idx=(sr+r)*TOTAL_SIZE + (sc+c);
+    const before=clone(gridData[idx] || makeCellSolid('#ffffff'));
+    const after=clone(neu[r*n+c]);
+    gridData[idx]=after;
+    recordChange(idx, before, after);
+  }
+  commitHistory();
+  renderAll();
+}
+
+// --- Export ---
+function exportPNG(){
+  const outSize=1080;
+  const canvas=document.createElement('canvas');
+  canvas.width=outSize; canvas.height=outSize;
+  const ctx=canvas.getContext('2d');
+  const cellSize=outSize/TOTAL_SIZE;
+
+  ctx.fillStyle='#ffffff';
+  ctx.fillRect(0,0,outSize,outSize);
+
+  for(let idx=0; idx<gridData.length; idx++){
+    const d=gridData[idx] || makeCellSolid('#ffffff');
+    const r=Math.floor(idx/TOTAL_SIZE);
+    const c=idx%TOTAL_SIZE;
+    const x=c*cellSize;
+    const y=r*cellSize;
+
+    if(isCellQst(d)){
+      const cols = qstDisplayedColors(d); // top,right,bottom,left
+      const cx = x + cellSize/2;
+      const cy = y + cellSize/2;
+      drawTri(ctx, [x,y], [x+cellSize,y], [cx,cy], cols[0]);
+      drawTri(ctx, [x+cellSize,y], [x+cellSize,y+cellSize], [cx,cy], cols[1]);
+      drawTri(ctx, [x+cellSize,y+cellSize], [x,y+cellSize], [cx,cy], cols[2]);
+      drawTri(ctx, [x,y+cellSize], [x,y], [cx,cy], cols[3]);
+    } else if(!d.isDiagonal){
+      ctx.fillStyle=normColor(d.c1);
+      ctx.fillRect(x,y,cellSize,cellSize);
+    } else if(d.diag==='/'){
+      drawTri(ctx,[x,y],[x+cellSize,y],[x,y+cellSize], normColor(d.c1));
+      drawTri(ctx,[x+cellSize,y],[x+cellSize,y+cellSize],[x,y+cellSize], normColor(d.c2));
+    } else {
+      drawTri(ctx,[x,y],[x+cellSize,y],[x+cellSize,y+cellSize], normColor(d.c1));
+      drawTri(ctx,[x,y],[x,y+cellSize],[x+cellSize,y+cellSize], normColor(d.c2));
+    }
+  }
+
+  // block overlay lines
+  ctx.strokeStyle='rgba(0,0,0,0.14)';
+  ctx.lineWidth=2;
+  const bs=getBlockSize();
+  for(let i=1;i<blocksPerSide;i++){
+    const pos=i*bs*cellSize;
+    ctx.beginPath(); ctx.moveTo(pos,0); ctx.lineTo(pos,outSize); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(0,pos); ctx.lineTo(outSize,pos); ctx.stroke();
+  }
+
+  const a=document.createElement('a');
+  a.download='quilt-design.png';
+  a.href=canvas.toDataURL('image/png');
+  a.click();
+}
+
+// --- Autosave ---
+function serialize(){
+  return JSON.stringify({version:4, blocksPerSide, currentBlockRow, currentBlockCol, gridData});
+}
+function deserialize(text){
+  const obj=JSON.parse(text);
+  const v = parseInt(obj && obj.version, 10) || 1;
+
+  if(!obj || !Array.isArray(obj.gridData) || obj.gridData.length!==TOTAL_SIZE*TOTAL_SIZE) throw new Error('Invalid project.');
+  blocksPerSide = sanitizeBlocksPerSide(obj.blocksPerSide || 6);
+  currentBlockRow=clamp(parseInt(obj.currentBlockRow||0,10),0,blocksPerSide-1);
+  currentBlockCol=clamp(parseInt(obj.currentBlockCol||0,10),0,blocksPerSide-1);
+
+  gridData=obj.gridData.map(cell=>{
+    const c = cell || {};
+    const qst = isCellQst(c);
+    if(qst){
+      const q1 = normColor(c.q1);
+      const q2 = normColor(c.q2);
+      const q3 = normColor(c.q3);
+      const q4 = normColor(c.q4);
+      const qrotRaw = (parseInt(c.qrot,10)||0);
+      const qrot = (((Math.round(qrotRaw / 90) * 90) % 360) + 360) % 360;
+
+      // v3 and earlier used a different QST "start angle" for rendering.
+      // Migrate to the canonical mapping where q1..q4 = TOP/RIGHT/BOTTOM/LEFT at qrot=0.
+      if(v < 4){
+        const q = [q1,q2,q3,q4];
+        const shift = (((qrot / 90) % 4) + 4) % 4;
+        const disp = [0,1,2,3].map(i => q[(i + 1 - shift + 4) % 4]); // legacy offset + rotation
+        return makeCellQst(disp[0], disp[1], disp[2], disp[3], 0);
+      }
+
+      return makeCellQst(q1,q2,q3,q4,qrot);
+    }
+    const isDiagonal=!!c.isDiagonal;
+    const diag=(c.diag==='\\' || c.diag==='/')?c.diag:'/';
+    const c1=normColor(c.c1);
+    const c2=normColor(typeof c.c2==='string'?c.c2:c1);
+    return isDiagonal ? makeCellDiagonal(diag,c1,c2) : makeCellSolid(c1);
+  });
+}
+function autosave(){
+  try{
+    localStorage.setItem(SAVE_KEY, serialize());
+  }catch(e){
+    console.warn('Autosave failed:', e);
+    showToast('⚠️ Autosave failed (storage full). Use “Save JSON”.', 'warn', 4500);
+  }
+}
+function autosaveLoad(){
+  const keys = [SAVE_KEY, 'quiltDesigner.autosave.v3', 'quiltDesigner.autosave.v2', 'quiltDesigner.autosave.v1'];
+  for(const key of keys){
+    try{
+      const saved = localStorage.getItem(key);
+      if(!saved) continue;
+      deserialize(saved);
+      blockDivision.value = String(blocksPerSide);
+      if(key !== SAVE_KEY){
+        try{
+          localStorage.setItem(SAVE_KEY, serialize());
+          localStorage.removeItem(key);
+        }catch(_){}
+      }
+      return true;
+    }catch(e){
+      // keep trying other keys
+    }
+  }
+  return false;
+}
+function autosaveClear(){ try{ localStorage.removeItem(SAVE_KEY); }catch(e){} }
+function autosaveDebounced(){
+  clearTimeout(autosaveDebounced.t);
+  autosaveDebounced.t=setTimeout(autosave,250);
+}
+
+// --- Events / Wiring ---
+function init(){
+  setupPalette();
+  calculateGridSize();
+  if(!autosaveLoad()){
+    gridData=Array.from({length:TOTAL_SIZE*TOTAL_SIZE}, ()=>makeCellSolid('#ffffff'));
+  }
+  blocksPerSide = sanitizeBlocksPerSide(blockDivision.value || blocksPerSide);
+  blockDivision.value = String(blocksPerSide);
+  setMode('solid');
+  clearHistory();
+  renderAll();
+}
+
+solidModeBtn.addEventListener('click',()=>setMode('solid'));
+diagonalModeBtn.addEventListener('click',()=>setMode('diagonal'));
+qstModeBtn.addEventListener('click',()=>setMode('qst'));
+copyModeBtn.addEventListener('click',()=>setMode('copy'));
+pasteModeBtn.addEventListener('click',()=>{
+  if(!copiedBlock) return;
+  if(copiedBlock.size !== getBlockSize()){
+    showToast(`Clipboard is ${copiedBlock.size}×${copiedBlock.size}. Switch Block Division to paste.`, 'warn', 4200);
+    return;
+  }
+  setMode('paste');
+});
+
+rotateBtn.addEventListener('click',()=>{ rotateClipboard90(); hintTextEl.textContent='Clipboard rotated. Click to paste.'; });
+flipHBtn.addEventListener('click',()=>{ flipClipboardH(); hintTextEl.textContent='Clipboard flipped. Click to paste.'; });
+flipVBtn.addEventListener('click',()=>{ flipClipboardV(); hintTextEl.textContent='Clipboard flipped. Click to paste.'; });
+clearCopyBtn.addEventListener('click',()=>{ copiedBlock=null; setMode('solid'); });
+
+rotBlockBtn.addEventListener('click',()=>transformCurrentBlock('rot90'));
+flipBlockHBtn.addEventListener('click',()=>transformCurrentBlock('flipH'));
+flipBlockVBtn.addEventListener('click',()=>transformCurrentBlock('flipV'));
+
+undoBtn.addEventListener('click',undo);
+redoBtn.addEventListener('click',redo);
+
+blockDivision.addEventListener('change',(e)=>{
+  blocksPerSide = sanitizeBlocksPerSide(e.target.value);
+  blockDivision.value = String(blocksPerSide);
+  currentBlockRow = 0; 
+  currentBlockCol = 0;
+  clearHistory();
+  setMode('solid');
+  renderAll();
+  autosaveDebounced();
+});
+
+// Minimap navigation
+minimap.addEventListener('click',(e)=>{
+  const rect=minimap.getBoundingClientRect();
+  const x=e.clientX-rect.left;
+  const y=e.clientY-rect.top;
+  const bs=getBlockSize();
+  const pxPerCell=GRID_SIZE/TOTAL_SIZE;
+  const blockPx=bs*pxPerCell;
+  currentBlockCol=clamp(Math.floor(x/blockPx),0,blocksPerSide-1);
+  currentBlockRow=clamp(Math.floor(y/blockPx),0,blocksPerSide-1);
+  renderAll();
+  autosaveDebounced();
+});
+
+// Pointer painting
+mainGrid.addEventListener('pointerdown',(e)=>{
+  const cell = e.target.closest('.cell');
+  if(!cell) return;
+
+  // Only left-click (prevents right-click starting a paint stroke)
+  if(e.button !== 0) return;
+
+  // Ignore additional pointers while painting (multi-touch)
+  if(painting && pointerId !== null && e.pointerId !== pointerId) return;
+
+  e.preventDefault();
+
+  const idx = parseInt(cell.dataset.idx, 10);
+  if(!validIdx(idx)) return;
+
+  if(currentMode==='copy'){
+    copiedBlock = null;
+    copyCurrentBlock();
+    staging = null;
+    painting = false;
+    pointerId = null;
+    return;
+  }
+  if(currentMode==='paste'){
+    pasteCurrentBlock();
+    return;
+  }
+
+  if(mainGrid.setPointerCapture){
+    try{ mainGrid.setPointerCapture(e.pointerId); }catch(_){}
+  }
+  painting = true;
+  pointerId = e.pointerId;
+  beginHistory();
+
+  paintCell(idx, e.clientX, e.clientY, { shiftOpposite: e.shiftKey });
+  renderAll();
+});
+
+mainGrid.addEventListener('pointermove',(e)=>{
+  if(!painting || e.pointerId!==pointerId) return;
+  const el=document.elementFromPoint(e.clientX, e.clientY);
+  const cell=el?el.closest('.cell'):null;
+  if(!cell) return;
+  const idx=parseInt(cell.dataset.idx,10);
+  if(!validIdx(idx)) return;
+  if(!validIdx(idx)) return;
+
+  paintCell(idx, e.clientX, e.clientY, { shiftOpposite: e.shiftKey });
+  renderAll();
+});
+
+mainGrid.addEventListener('pointerup',(e)=>{
+  if(!painting || e.pointerId!==pointerId) return;
+  painting=false;
+  pointerId=null;
+  if(mainGrid.releasePointerCapture && mainGrid.hasPointerCapture && mainGrid.hasPointerCapture(e.pointerId)){
+    try{ mainGrid.releasePointerCapture(e.pointerId); }catch(_){ }
+  }
+  commitHistory();
+});
+mainGrid.addEventListener('pointercancel',()=>{
+  if(!painting) return;
+  painting=false;
+  pointerId=null;
+  commitHistory();
+});
+
+// Right-click behaviors:
+// - diagonal mode: toggle '/' <-> '\\'
+// - qst mode: rotate qrot 90°
+mainGrid.addEventListener('contextmenu',(e)=>{
+  const cell=e.target.closest('.cell');
+  if(!cell) return;
+  e.preventDefault();
+
+  const idx=parseInt(cell.dataset.idx,10);
+  if(!validIdx(idx)) return;
+  const before=clone(gridData[idx] || makeCellSolid('#ffffff'));
+  let d=clone(gridData[idx] || makeCellSolid('#ffffff'));
+
+  if(currentMode==='diagonal'){
+    if(isCellQst(d)){
+      // convert QST -> diagonal with a default backslash
+      d = makeCellDiagonal('\\', '#ffffff', '#ffffff');
+    } else if(!d.isDiagonal){
+      d = makeCellDiagonal('\\', '#ffffff', '#ffffff');
+    } else {
+      d.diag = (d.diag==='/') ? '\\' : '/';
+    }
+    d.isDiagonal = true;
+    d.isQst = false;
+    gridData[idx]=d;
+  } else if(currentMode==='qst'){
+    if(!isCellQst(d)){
+      d = makeCellQst('#ffffff','#ffffff','#ffffff','#ffffff',0);
+    }
+    d.qrot = ((parseInt(d.qrot,10)||0) + 90) % 360;
+    d.isQst = true;
+    d.isDiagonal = false;
+    gridData[idx]=d;
+  } else {
+    return;
+  }
+
+  beginHistory();
+  recordChange(idx, before, clone(gridData[idx]));
+  commitHistory();
+  renderAll();
+});
+
+// Save/Load JSON
+saveJsonBtn.addEventListener('click',()=>{
+  const blob=new Blob([serialize()], {type:'application/json'});
+  const url=URL.createObjectURL(blob);
+  const a=document.createElement('a');
+  a.href=url; a.download='quilt-project.json';
+  a.click();
+  setTimeout(()=>URL.revokeObjectURL(url), 500);
+});
+
+fileInput.addEventListener('change',(e)=>{
+  const file=e.target.files && e.target.files[0];
+  if(!file) return;
+  const reader=new FileReader();
+  reader.onload=()=>{
+    try{
+      deserialize(reader.result);
+      blockDivision.value = String(blocksPerSide);
+      copiedBlock=null;
+      setMode('solid');
+      clearHistory();
+      renderAll();
+      autosaveDebounced();
+    } catch(err){
+      alert('Could not load: '+err.message);
+    }
+  };
+  reader.readAsText(file);
+  fileInput.value='';
+});
+
+// Clear
+clearBtn.addEventListener('click',()=>{
+  if(confirm('Clear the entire quilt?')){
+    autosaveClear();
+    gridData=Array.from({length:TOTAL_SIZE*TOTAL_SIZE}, ()=>makeCellSolid('#ffffff'));
+    copiedBlock=null;
+    setMode('solid');
+    clearHistory();
+    renderAll();
+    autosaveDebounced();
+  }
+});
+
+// Export
+exportBtn.addEventListener('click', exportPNG);
+
+// Help modal
+helpBtn.addEventListener('click',()=>helpModal.style.display='block');
+helpClose.addEventListener('click',()=>helpModal.style.display='none');
+helpModal.addEventListener('click',(e)=>{ if(e.target===helpModal) helpModal.style.display='none'; });
+
+// Keyboard shortcuts
+document.addEventListener('keydown',(e)=>{
+  // Don't hijack shortcuts while typing in inputs
+  if(e.target && e.target.matches('input, textarea, select')) return;
+
+  // ESC closes the help modal first, then exits copy/paste
+  if(e.key === 'Escape'){
+    if(helpModal && helpModal.style.display === 'block'){
+      helpModal.style.display = 'none';
+      e.preventDefault();
+      return;
+    }
+    if(currentMode==='copy' || currentMode==='paste'){
+      setMode('solid');
+      e.preventDefault();
+      return;
+    }
+  }
+
+  const mod = e.ctrlKey || e.metaKey;
+  if(mod && (e.key==='z'||e.key==='Z') && !e.shiftKey){ e.preventDefault(); undo(); return; }
+  if(mod && ((e.key==='y'||e.key==='Y') || ((e.key==='z'||e.key==='Z') && e.shiftKey))){ e.preventDefault(); redo(); return; }
+
+  if(e.key==='s'||e.key==='S') setMode('solid');
+  else if(e.key==='h'||e.key==='H') setMode('diagonal');
+  else if(e.key==='q'||e.key==='Q') setMode('qst');
+  else if(e.key==='c'||e.key==='C') setMode('copy');
+  else if(e.key==='v'||e.key==='V'){
+    if(copiedBlock && copiedBlock.size === getBlockSize()) setMode('paste');
+    else if(copiedBlock) showToast(`Clipboard is ${copiedBlock.size}×${copiedBlock.size}. Switch Block Division to paste.`, 'warn', 4200);
+  }
+  else if(e.key==='r'||e.key==='R') transformCurrentBlock('rot90'); // quick rotate block
+});
+
+// Resize (debounced)
+let resizeTimeout;
+window.addEventListener('resize',()=>{
+  clearTimeout(resizeTimeout);
+  resizeTimeout = setTimeout(() => {
+    calculateGridSize();
+    renderAll();
+  }, 150);
+});
+
+init();
+
+</script>
+
+
+<div id="toast" role="status" aria-live="polite"></div>
+</body>
+</html>

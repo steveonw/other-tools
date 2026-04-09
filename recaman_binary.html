@@ -1,0 +1,545 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Recamán with Binary Signals</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            margin: 0;
+            padding: 20px;
+            background: linear-gradient(135deg, #1e3c72 0%, #2a5298 100%);
+            min-height: 100vh;
+        }
+        .container {
+            max-width: 1600px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 15px;
+            padding: 30px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+        }
+        h1 {
+            color: #333;
+            text-align: center;
+            margin-bottom: 10px;
+        }
+        .subtitle {
+            text-align: center;
+            color: #666;
+            margin-bottom: 30px;
+            font-size: 14px;
+        }
+        .modes {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 15px;
+            margin-bottom: 30px;
+        }
+        .mode-card {
+            border: 3px solid #ddd;
+            border-radius: 10px;
+            padding: 15px;
+            cursor: pointer;
+            transition: all 0.3s;
+            background: #fafafa;
+        }
+        .mode-card:hover {
+            border-color: #667eea;
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(102, 126, 234, 0.3);
+        }
+        .mode-card.active {
+            border-color: #667eea;
+            background: linear-gradient(135deg, #667eea15 0%, #764ba215 100%);
+        }
+        .mode-title {
+            font-weight: bold;
+            color: #333;
+            margin-bottom: 5px;
+            font-size: 16px;
+        }
+        .mode-desc {
+            font-size: 13px;
+            color: #666;
+            line-height: 1.4;
+        }
+        .controls {
+            display: flex;
+            gap: 20px;
+            align-items: center;
+            justify-content: center;
+            margin-bottom: 20px;
+            flex-wrap: wrap;
+        }
+        .control-group {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        label {
+            font-weight: 600;
+            color: #555;
+        }
+        input[type="range"] {
+            width: 200px;
+        }
+        input[type="number"] {
+            width: 80px;
+            padding: 5px;
+            border: 2px solid #667eea;
+            border-radius: 5px;
+        }
+        input[type="text"] {
+            width: 200px;
+            padding: 5px;
+            border: 2px solid #667eea;
+            border-radius: 5px;
+            font-family: monospace;
+        }
+        button {
+            background: #667eea;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 5px;
+            cursor: pointer;
+            font-weight: 600;
+            transition: background 0.3s;
+        }
+        button:hover {
+            background: #5568d3;
+        }
+        .comparison {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+            margin-top: 20px;
+        }
+        .chart-container {
+            border: 2px solid #ddd;
+            border-radius: 10px;
+            padding: 15px;
+            background: #fafafa;
+        }
+        .chart-title {
+            font-weight: bold;
+            color: #333;
+            margin-bottom: 10px;
+            text-align: center;
+        }
+        canvas {
+            display: block;
+            margin: 10px auto;
+            border-radius: 5px;
+            background: white;
+        }
+        .stats {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+            gap: 10px;
+            margin-top: 15px;
+        }
+        .stat-box {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 10px;
+            border-radius: 6px;
+            text-align: center;
+        }
+        .stat-label {
+            font-size: 10px;
+            opacity: 0.9;
+            margin-bottom: 3px;
+        }
+        .stat-value {
+            font-size: 16px;
+            font-weight: bold;
+        }
+        .info {
+            background: #e3f2fd;
+            border-left: 4px solid #2196f3;
+            padding: 15px;
+            margin: 20px 0;
+            border-radius: 4px;
+        }
+        .binary-viz {
+            font-family: monospace;
+            background: #f5f5f5;
+            padding: 10px;
+            border-radius: 5px;
+            overflow-x: auto;
+            white-space: nowrap;
+            font-size: 12px;
+            margin: 10px 0;
+        }
+        .bit-0 { color: #e74c3c; }
+        .bit-1 { color: #3498db; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🔢 Recamán Sequence with Binary Signals</h1>
+        <p class="subtitle">Exploring how binary patterns modify the classic sequence</p>
+        
+        <div class="info">
+            <strong>Experiment:</strong> Select a mode below to see how adding binary signals changes the Recamán sequence behavior!
+        </div>
+
+        <div class="modes">
+            <div class="mode-card active" onclick="selectMode('original')">
+                <div class="mode-title">🌀 Original Recamán</div>
+                <div class="mode-desc">a(n) = a(n-1) - n if positive and new, else a(n-1) + n</div>
+            </div>
+            
+            <div class="mode-card" onclick="selectMode('addBinary')">
+                <div class="mode-title">➕ Add Binary Value</div>
+                <div class="mode-desc">Result + binary[n] (adds 0 or 1 to each term)</div>
+            </div>
+            
+            <div class="mode-card" onclick="selectMode('forceBinary')">
+                <div class="mode-title">🔄 Force Direction</div>
+                <div class="mode-desc">Binary determines add/subtract (overrides normal rule)</div>
+            </div>
+            
+            <div class="mode-card" onclick="selectMode('modulateBinary')">
+                <div class="mode-title">✖️ Multiply Step</div>
+                <div class="mode-desc">n × (1 + binary[n]) — step size varies by signal</div>
+            </div>
+            
+            <div class="mode-card" onclick="selectMode('xorBinary')">
+                <div class="mode-title">⚡ XOR Perturbation</div>
+                <div class="mode-desc">Result XOR binary[n] (bitwise modification)</div>
+            </div>
+            
+            <div class="mode-card" onclick="selectMode('conditionalBinary')">
+                <div class="mode-title">🎯 Conditional Apply</div>
+                <div class="mode-desc">Only apply Recamán rule when binary[n] = 1</div>
+            </div>
+        </div>
+
+        <div class="controls">
+            <div class="control-group">
+                <label for="terms">Terms:</label>
+                <input type="range" id="terms" min="50" max="500" value="200" step="10">
+                <input type="number" id="termsInput" min="50" max="500" value="200">
+            </div>
+            <div class="control-group">
+                <label for="binaryPattern">Binary Pattern:</label>
+                <select id="binaryPattern" onchange="regenerate()">
+                    <option value="alternating">Alternating (010101...)</option>
+                    <option value="periodic2">Period 2 (00110011...)</option>
+                    <option value="periodic3">Period 3 (00010001...)</option>
+                    <option value="fibonacci">Fibonacci Mod 2</option>
+                    <option value="random">Random</option>
+                    <option value="custom">Custom</option>
+                </select>
+            </div>
+            <div class="control-group" id="customGroup" style="display:none;">
+                <input type="text" id="customBinary" placeholder="e.g. 0110101" maxlength="20">
+            </div>
+            <button onclick="regenerate()">Update</button>
+        </div>
+
+        <div class="binary-viz" id="binaryViz"></div>
+
+        <div class="comparison">
+            <div class="chart-container">
+                <div class="chart-title">Original Recamán</div>
+                <canvas id="originalCanvas" width="650" height="300"></canvas>
+                <div class="stats" id="originalStats"></div>
+            </div>
+            
+            <div class="chart-container">
+                <div class="chart-title" id="modifiedTitle">Modified Recamán</div>
+                <canvas id="modifiedCanvas" width="650" height="300"></canvas>
+                <div class="stats" id="modifiedStats"></div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let currentMode = 'original';
+        let binarySignal = [];
+
+        function selectMode(mode) {
+            currentMode = mode;
+            document.querySelectorAll('.mode-card').forEach(card => {
+                card.classList.remove('active');
+            });
+            event.target.closest('.mode-card').classList.add('active');
+            
+            const titles = {
+                'original': 'Original Recamán',
+                'addBinary': 'Add Binary Value',
+                'forceBinary': 'Force Direction by Binary',
+                'modulateBinary': 'Modulate Step Size',
+                'xorBinary': 'XOR Perturbation',
+                'conditionalBinary': 'Conditional Apply'
+            };
+            document.getElementById('modifiedTitle').textContent = titles[mode];
+            regenerate();
+        }
+
+        function generateBinarySignal(n, pattern) {
+            const signal = [];
+            const customInput = document.getElementById('customBinary').value;
+            
+            switch(pattern) {
+                case 'alternating':
+                    for (let i = 0; i < n; i++) signal.push(i % 2);
+                    break;
+                case 'periodic2':
+                    for (let i = 0; i < n; i++) signal.push(Math.floor(i / 2) % 2);
+                    break;
+                case 'periodic3':
+                    for (let i = 0; i < n; i++) signal.push(Math.floor(i / 3) % 2);
+                    break;
+                case 'fibonacci':
+                    let a = 0, b = 1;
+                    for (let i = 0; i < n; i++) {
+                        signal.push(a % 2);
+                        [a, b] = [b, (a + b)];
+                    }
+                    break;
+                case 'random':
+                    for (let i = 0; i < n; i++) signal.push(Math.random() > 0.5 ? 1 : 0);
+                    break;
+                case 'custom':
+                    if (customInput.length > 0) {
+                        for (let i = 0; i < n; i++) {
+                            signal.push(parseInt(customInput[i % customInput.length]) || 0);
+                        }
+                    } else {
+                        for (let i = 0; i < n; i++) signal.push(i % 2);
+                    }
+                    break;
+            }
+            return signal;
+        }
+
+        function generateRecaman(n, binary, mode) {
+            const sequence = [0];
+            const operations = ['start'];
+            const seen = new Set([0]);
+            
+            for (let i = 1; i < n; i++) {
+                const prev = sequence[i - 1];
+                let next;
+                
+                if (mode === 'original') {
+                    // Standard Recamán
+                    const subtract = prev - i;
+                    if (subtract > 0 && !seen.has(subtract)) {
+                        next = subtract;
+                        operations.push('sub');
+                    } else {
+                        next = prev + i;
+                        operations.push('add');
+                    }
+                } else if (mode === 'addBinary') {
+                    // Add binary signal to result
+                    const subtract = prev - i;
+                    if (subtract > 0 && !seen.has(subtract + binary[i])) {
+                        next = subtract + binary[i];
+                        operations.push('sub');
+                    } else {
+                        next = prev + i + binary[i];
+                        operations.push('add');
+                    }
+                } else if (mode === 'forceBinary') {
+                    // Binary forces direction: 0=subtract, 1=add
+                    if (binary[i] === 0) {
+                        next = Math.max(0, prev - i);
+                        operations.push('sub');
+                    } else {
+                        next = prev + i;
+                        operations.push('add');
+                    }
+                } else if (mode === 'modulateBinary') {
+                    // Binary modulates step size
+                    const step = i * (1 + binary[i]);
+                    const subtract = prev - step;
+                    if (subtract > 0 && !seen.has(subtract)) {
+                        next = subtract;
+                        operations.push('sub');
+                    } else {
+                        next = prev + step;
+                        operations.push('add');
+                    }
+                } else if (mode === 'xorBinary') {
+                    // XOR with binary
+                    const subtract = prev - i;
+                    if (subtract > 0 && !seen.has(subtract)) {
+                        next = subtract ^ binary[i];
+                        operations.push('sub');
+                    } else {
+                        next = (prev + i) ^ binary[i];
+                        operations.push('add');
+                    }
+                } else if (mode === 'conditionalBinary') {
+                    // Only apply rule when binary is 1
+                    if (binary[i] === 1) {
+                        const subtract = prev - i;
+                        if (subtract > 0 && !seen.has(subtract)) {
+                            next = subtract;
+                            operations.push('sub');
+                        } else {
+                            next = prev + i;
+                            operations.push('add');
+                        }
+                    } else {
+                        next = prev; // Stay in place
+                        operations.push('stay');
+                    }
+                }
+                
+                sequence.push(next);
+                seen.add(next);
+            }
+            
+            return { sequence, operations, seen };
+        }
+
+        function drawSequence(canvas, sequence, operations, color = '#667eea') {
+            const ctx = canvas.getContext('2d');
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            
+            const maxVal = Math.max(...sequence, 1);
+            const scaleX = (canvas.width - 60) / sequence.length;
+            const scaleY = (canvas.height - 60) / maxVal;
+            
+            // Draw axes
+            ctx.strokeStyle = '#333';
+            ctx.lineWidth = 2;
+            ctx.beginPath();
+            ctx.moveTo(40, 10);
+            ctx.lineTo(40, canvas.height - 30);
+            ctx.lineTo(canvas.width - 10, canvas.height - 30);
+            ctx.stroke();
+            
+            // Labels
+            ctx.fillStyle = '#333';
+            ctx.font = '11px Arial';
+            ctx.fillText('n', canvas.width - 20, canvas.height - 10);
+            ctx.fillText('a(n)', 10, 20);
+            ctx.fillText('0', 30, canvas.height - 15);
+            ctx.fillText(maxVal, 10, 15);
+            
+            // Draw line
+            ctx.strokeStyle = color;
+            ctx.lineWidth = 2;
+            ctx.beginPath();
+            ctx.moveTo(40, canvas.height - 30 - sequence[0] * scaleY);
+            
+            for (let i = 1; i < sequence.length; i++) {
+                const x = 40 + i * scaleX;
+                const y = canvas.height - 30 - sequence[i] * scaleY;
+                ctx.lineTo(x, y);
+            }
+            ctx.stroke();
+            
+            // Draw points
+            for (let i = 0; i < sequence.length; i += Math.max(1, Math.floor(sequence.length / 150))) {
+                const x = 40 + i * scaleX;
+                const y = canvas.height - 30 - sequence[i] * scaleY;
+                
+                if (operations[i] === 'add') {
+                    ctx.fillStyle = '#e74c3c';
+                } else if (operations[i] === 'sub') {
+                    ctx.fillStyle = '#3498db';
+                } else {
+                    ctx.fillStyle = '#95a5a6';
+                }
+                
+                ctx.beginPath();
+                ctx.arc(x, y, 3, 0, Math.PI * 2);
+                ctx.fill();
+            }
+        }
+
+        function updateStats(containerId, sequence, operations, seen) {
+            const n = sequence.length;
+            const maxVal = Math.max(...sequence);
+            const unique = seen.size;
+            const adds = operations.filter(op => op === 'add').length;
+            const subs = operations.filter(op => op === 'sub').length;
+            
+            const html = `
+                <div class="stat-box">
+                    <div class="stat-label">Max Value</div>
+                    <div class="stat-value">${maxVal}</div>
+                </div>
+                <div class="stat-box">
+                    <div class="stat-label">Unique</div>
+                    <div class="stat-value">${unique}</div>
+                </div>
+                <div class="stat-box">
+                    <div class="stat-label">Adds</div>
+                    <div class="stat-value">${adds}</div>
+                </div>
+                <div class="stat-box">
+                    <div class="stat-label">Subs</div>
+                    <div class="stat-value">${subs}</div>
+                </div>
+            `;
+            document.getElementById(containerId).innerHTML = html;
+        }
+
+        function showBinaryPattern(binary) {
+            const viz = document.getElementById('binaryViz');
+            const display = binary.slice(0, 100).map((bit, i) => 
+                `<span class="bit-${bit}">${bit}</span>`
+            ).join('');
+            viz.innerHTML = `Binary Signal: ${display}${binary.length > 100 ? '...' : ''}`;
+        }
+
+        function regenerate() {
+            const n = parseInt(document.getElementById('terms').value);
+            const pattern = document.getElementById('binaryPattern').value;
+            
+            // Show/hide custom input
+            document.getElementById('customGroup').style.display = 
+                pattern === 'custom' ? 'flex' : 'none';
+            
+            binarySignal = generateBinarySignal(n, pattern);
+            showBinaryPattern(binarySignal);
+            
+            // Generate original
+            const original = generateRecaman(n, binarySignal, 'original');
+            drawSequence(
+                document.getElementById('originalCanvas'), 
+                original.sequence, 
+                original.operations,
+                '#667eea'
+            );
+            updateStats('originalStats', original.sequence, original.operations, original.seen);
+            
+            // Generate modified
+            const modified = generateRecaman(n, binarySignal, currentMode);
+            drawSequence(
+                document.getElementById('modifiedCanvas'), 
+                modified.sequence, 
+                modified.operations,
+                '#e91e63'
+            );
+            updateStats('modifiedStats', modified.sequence, modified.operations, modified.seen);
+        }
+
+        // Sync slider and input
+        document.getElementById('terms').addEventListener('input', function() {
+            document.getElementById('termsInput').value = this.value;
+        });
+        
+        document.getElementById('termsInput').addEventListener('input', function() {
+            const val = Math.max(50, Math.min(500, parseInt(this.value) || 50));
+            this.value = val;
+            document.getElementById('terms').value = val;
+        });
+
+        // Initial draw
+        regenerate();
+    </script>
+</body>
+</html>

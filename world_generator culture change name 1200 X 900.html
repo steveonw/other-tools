@@ -1,0 +1,955 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>World Generator v4.0 - Master Dataset</title>
+  <style>
+    :root {
+      --bg: #0f0f0f;
+      --panel: #1a1a1a;
+      --accent: #3b82f6;
+      --text: #e0e0e0;
+      --border: #333;
+    }
+    body { 
+      background: var(--bg); 
+      color: var(--text); 
+      font-family: 'Inter', system-ui, -apple-system, sans-serif;
+      margin: 0;
+      padding: 15px;
+      display: flex;
+      flex-direction: row;
+      gap: 15px;
+      height: 100vh;
+      overflow: hidden;
+      box-sizing: border-box;
+    }
+
+    #sidebar {
+      width: 360px;
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      display: flex;
+      flex-direction: column;
+      padding: 15px;
+      gap: 15px;
+      overflow-y: auto;
+    }
+
+    #main-view {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      gap: 15px;
+      overflow: hidden;
+    }
+
+    h1 { margin: 0; font-size: 1.2rem; color: #fff; }
+    label { font-size: 0.65rem; color: #888; text-transform: uppercase; letter-spacing: 1px; font-weight: 700; margin-bottom: 4px; display: block; }
+    
+    .control-block { border-bottom: 1px solid var(--border); padding-bottom: 15px; }
+    
+    button {
+      padding: 8px 12px;
+      background: #333;
+      color: #fff;
+      border: 1px solid #444;
+      border-radius: 6px;
+      cursor: pointer;
+      font-weight: 600;
+      font-size: 0.8rem;
+    }
+    button.active { background: var(--accent); border-color: #60a5fa; }
+    button.gen-btn { width: 100%; background: var(--accent); margin-top: 10px; border: none; }
+
+    input[type="range"], select, input[type="number"] {
+      width: 100%;
+      background: #000;
+      color: #fff;
+      border: 1px solid #444;
+      padding: 8px;
+      border-radius: 4px;
+      font-size: 0.85rem;
+      box-sizing: border-box;
+    }
+
+    .kingdom-item {
+      background: #252525;
+      padding: 12px;
+      border-radius: 8px;
+      margin-bottom: 10px;
+      border-left: 4px solid var(--k-color);
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+    .k-header { font-weight: bold; display: flex; justify-content: space-between; align-items: center; color: #fff; font-size: 0.85rem; }
+    .k-sub { opacity: 0.7; font-size: 0.7rem; }
+    
+    .k-select {
+        font-size: 0.7rem;
+        padding: 4px;
+        background: #111;
+        border-color: #555;
+    }
+
+    .canvas-container {
+      position: relative;
+      flex: 1;
+      background: #000;
+      border-radius: 12px;
+      border: 1px solid var(--border);
+      overflow: hidden;
+    }
+    canvas { width: 100%; height: 100%; object-fit: contain; image-rendering: auto; cursor: crosshair; }
+
+    #inspector {
+      position: fixed;
+      pointer-events: none;
+      background: rgba(0, 0, 0, 0.9);
+      border: 1px solid #555;
+      padding: 8px 12px;
+      border-radius: 6px;
+      font-size: 11px;
+      display: none;
+      z-index: 1000;
+      box-shadow: 0 4px 15px rgba(0,0,0,0.5);
+    }
+  </style>
+</head>
+<body>
+
+  <div id="sidebar">
+    <h1>Atlas v4.0</h1>
+    
+    <div class="control-block">
+      <label>Seed Generator</label>
+      <input type="number" id="seedInput" placeholder="Leave blank for random">
+      <button id="regenBtn" class="gen-btn">Generate World</button>
+      <button id="exportPngBtn" class="gen-btn" style="background:#16a34a;">Export PNG</button>
+    </div>
+
+    <div class="control-block">
+      <label>Global Rules</label>
+      <div style="margin-bottom: 12px;">
+        <label style="text-transform:none;">Kingdom Density: <span id="kVal">12</span></label>
+        <input type="range" id="kRange" min="2" max="25" value="12">
+      </div>
+      <div>
+        <label style="text-transform:none;">Sea Level</label>
+        <input type="range" id="seaRange" min="20" max="60" value="38">
+      </div>
+    </div>
+     <div style="margin-top: 12px;">
+      <label style="text-transform:none;">Island Density: <span id="islandVal">35%</span></label>
+     <input type="range" id="islandRange" min="0" max="100" value="35">
+  </div>
+    <div class="control-block">
+      <label>Individual Kingdoms</label>
+      <div id="kingdom-list"></div>
+    </div>
+  </div>
+
+  <div id="main-view">
+    <div style="display:flex; gap:10px;">
+        <button id="viewPhys" class="active">Terrain View</button>
+        <button id="viewPol">Borders & Cultures</button>
+    </div>
+    
+    <div class="canvas-container">
+      <div id="inspector"></div>
+      <canvas id="mapCanvas"></canvas>
+    </div>
+  </div>
+
+<script>
+const CULTURES = {
+  "Elven": {
+    kingdoms: ["Eversylvan Accord", "Lighthaven Thalassia", "Dawnleaf Dominion", "Silverbough Realm", "Starwillow Court", "Moonpetal Enclave", "Verdantaria", "Aetherglade League"],
+    capitals: ["Aeloria", "Silvaran", "Lethrien", "Nymbralis", "Iriandor", "Vaelith", "Caelunor", "Thalarae", "Eluneth", "Saerwyn"],
+    towns: ["Willowmere", "Brightgrove", "Larksong", "Mistvale", "Moonhollow", "Silverfen", "Sunpetal", "Thistlelight", "Starbrook", "Glimmerdell", "Fernwatch", "Dewspire", "Shadeglade", "Whisperwind", "Bloomhaven", "Luminford", "Ivyharth", "Gossamer Bay", "Crystalmead", "Rainlily", "Goldenbough", "Nightorchard", "Swanreach", "Echofern", "Brightwater", "Dreamgrove", "Softpine", "Dawnmere", "Shimmerpond", "Faelight"]
+  },
+  "Dwarven": {
+    kingdoms: ["Karak Ironrealm", "Deepforge Compact", "Stonecrown Dominion", "Bronzeward Pact", "Granitebanner Kingdom", "Emberdelve Authority", "Hammermark Union", "Oldmount Throne"],
+    capitals: ["Karak-Durn", "Bronzegate", "Ironhallow", "Stonevein", "Kharumbar", "Forgehome", "Grimbastion", "Anvilgard", "Deepkarn", "Cinderhall"],
+    towns: ["Rivetrock", "Pickstone", "Anvilstead", "Coalridge", "Slatebarrow", "Flintgarde", "Orebridge", "Hammerfall", "Coppershield", "Brineforge", "Highdelm", "Deepburrow", "Grithelm", "Basalt Keep", "Steelrun", "Tinwatch", "Cragholm", "Stonemarch", "Forgespring", "Grudgepost", "Runecliff", "Underpeak", "Quarrygate", "Smelterby", "Hearthvault", "Boulderpass", "Kilnford", "Brimstone Row", "Axebridge", "Miners’ Rest"]
+  },
+  "Goblin": {
+    kingdoms: ["The Scrapcrown Swarm", "Ragbanner Clans", "Sootfang Confederacy", "The Tinkerscale Mob", "Muckwarren Pact", "Skittercoil Host", "The Rusted Throne", "Gutterglint League"],
+    capitals: ["Sniksprocket", "Grubnook", "Muckwhistle", "Ragpicker’s Roost", "Krik-Krak", "Sootspire", "Tatterton", "Clatterpike", "Stinkbarrel", "Rustwick"],
+    towns: ["Bramblejunk", "Puddlesnatch", "Rattleford", "Sootsnag", "Tinpan Hollow", "Scraphook", "Gritguzzle", "Nibbleton", "Spindlepit", "Grimeglen", "Crookshanty", "Skulk Alley", "Chatterdump", "Snagglebridge", "Bogglebend", "Creakwharf", "Slopbucket", "Tinker’s Nook", "Janglejar", "Mothmarket", "Stumblepost", "Oilyard", "Clankmoor", "Brokenbolt", "Squeezequay", "Snickerrow", "Crumblegate", "Mudlatch", "Peatplug", "Splintershack"]
+  },
+  "Halfling": {
+    kingdoms: ["Bramblewick Shires", "Hearthvale League", "Greenbarrow Compact", "Honeymead Realm", "Tumbleford Marches", "Thistleby Union", "Cobblebrook Commonwealth", "Warmhill Federation"],
+    capitals: ["Bramblewick", "Honeyhollow", "Greenbarrow", "Tumbleford", "Thistleby", "Cobblebrook", "Hearthvale", "Appleford", "Brackenham", "Meadowmere"],
+    towns: ["Buttercup End", "Cidercross", "Rosebank", "Pippinridge", "Wheatbridge", "Sunnyside", "Cherryby", "Hopsfield", "Pebblebrook", "Mapleford", "Lavender Lane", "Oldmill Green", "Kettleford", "Hearthstone", "Plumwell", "Bramblegate", "Acorn Hollow", "Briarpatch", "Flaxmere", "Teatime Downs", "Picklewick", "Goosepond", "Willowby", "Patchwork Hill", "Dandelion Dell", "Cloverton", "Puddingcroft", "Rillhaven", "Barleymead", "Saffronstead"]
+  },
+  "Draconic": {
+    kingdoms: ["The Wyrmspire Imperium", "Ashcrown Dominion", "Sarthax Ascendancy", "Emberthrone Empire", "Scalevault Sovereignty", "Pyrewing Principality", "Obsidian Banner Realm", "Skyfang Hegemony"],
+    capitals: [ "Vyrnaxia", "Sarthakar", "Ashenreach", "Wyrmhold", "Zirakh’Tul", "Pyrecrest", "Obsidian Gate", "Skyscale Citadel", "Embercrown", "Drakespire"],
+    towns: ["Cinderwatch", "Lavaford", "Smokeshelf", "Scorchmere", "Emberfall", "Talonridge", "Moltenbridge", "Ashmarket", "Scalehaven", "Fireglass", "Blackrock Quay", "Redfume", "Sunburnt Vale", "Brasscliff", "Drakebrook", "Charstone", "Pyrewick", "Sootharbor", "Thornflame", "Obsidian Hollow", "Rimefang Outpost", "Brightcinder", "Heatwind Pass", "Hornspire", "Wyvern’s Rest", "Coppersmoke", "Skyridge", "Burnished Bay", "Ashgrove", "Craterfield"
+]
+  },
+  "Drow": {
+    kingdoms: ["Umbravane Dominions", "The Onyx Covenant", "House Vhaelyth Regency", "The Ebon Diadem", "Nightglass Imperium", "The Velvet Deep", "Sszindrel Satrapy", "The Gloomweave League"],
+    capitals: ["Vhaelyth", "Xil’Nareth", "Umbravane", "Nyx’Velor", "Draezh-Tor", "Sszindrel", "Khash’Velyn", "Thren’Zyra", "Velkynspire", "Zhaun’kora"],
+    towns: ["Gloamcross", "Shadeharbor", "Nightquarry", "Umbergate", "Blacksilk", "Whispercrypt", "Hollowthorn", "Obsidian Row", "Duskmarket", "Ebonford", "Spiderwold", "Veilwatch", "Darkwell", "Moonless Way", "Sablebridge", "Viperholme", "Ashen Vault", "Candlefade", "Grimveil", "Netherpost", "Cloakspire", "Wraithfen", "Silent Grotto", "Shiverstone", "Nocturne Hollow", "Throatsong", "Poisonleaf", "Underbriar", "Ravenchasm", "Blacklumen"
+]
+  },
+  "Elemental": {
+    kingdoms: ["Zephyrwatch Expanse", "The Tideglass Compact", "Cinderfall Dominion", "Stonehush Tribunal", "The Frostvault Crown", "Brinehaven Confederacy", "Emberglass Principality", "The Thunderwold Marches"],
+    capitals: ["Zephyrwatch", "Brinehaven", "Cinderfall", "Stonehush", "Glimmerfrost", "Emberglass", "Stormhold", "Tideward", "Ashenwell", "Crystalpeak"],
+    towns: ["Windmere", "Saltspire", "Sparkford", "Flintvale", "Cloudreach", "Rimebrook", "Driftshore", "Pebblegate", "Thunderbridge", "Mistwharf", "Siltmarket", "Heatwind", "Snowlatch", "Rainhollow", "Sunshard", "Wavecrest", "Dustcairn", "Iceharbor", "Leafgust", "Stonecurrent", "Cindermoor", "Hailstone", "Fogfen", "Brimwell", "Whirlpool Bay", "Emberfield", "Glacierpost", "Quakewatch", "Dewfall", "Skybreak"]
+  },
+  "French": {
+    kingdoms: ["Crown of Montcelin", "Valmeraine Kingdom", "The Fleurmont Realm", "Duchy of Clairmont", "Beaumontier Crownlands", "The Rochevieux Throne", "Fontenelle Concord", "The Cœurvaine Principality"],
+    capitals: ["Montcelin", "Beaumontier", "Clairmont", "Valmeraine", "Rochevieux", "Fontenelle", "Fleurmont", "Cœurvaine", "Argentel", "Marivaux"],
+    towns: ["Bellecour", "Saint-Laurent", "Vieuxpont", "Rivièrebleu", "La Brume", "Chanterive", "Boisjoli", "Montdouce", "Valdoré", "Pierreclair", "Luneval", "Roseraie", "Pontelieu", "Courfeu", "Écumeport", "Aiglebourg", "Brisechamp", "Vermeil", "Châteaugris", "Lysanne", "Givrelac", "Maraisvert", "Ormeaux", "Bellefen", "Tournevie", "Falaise-Rouge", "Mornay", "Clairière", "Port-Saphir", "Montbrun"]
+  },
+  "Iberian": {
+    kingdoms: ["Crown of Castelmoura", "Bravamar Kingdom", "Valescura Dominion", "Serraflores Realm", "Portoclaro League", "Luarverde Principality", "Altarosa Crownlands", "Maréazul Confederacy"],
+    capitals: ["Castelmoura", "Bravamar", "Valescura", "Portoclaro", "Serraflores", "Luarverde", "Altorreño", "Maréazul", "Valdoro", "Cobalterra"],
+    towns: ["San Bravío", "Puertoluz", "Sierraumbría", "Rio Claro", "Valverdejo", "Montecanto", "Loma Dorada", "Costa Bruma", "Campo Viejo", "Fuentealta", "Torreblanca", "Olivamar", "Brisabella", "Piedra Roja", "Villasol", "Cala Serena", "Vinhoverde", "Almenara", "Rocafirme", "Prado Claro", "Mirador", "Portomar", "Granavista", "Encinal", "La Candelaria", "Salinas Viejas", "Valtierra", "Brumaluna", "Villanueva del Sol", "Santa Cobalta"]
+  },
+  "Anglo-Norman": {
+    kingdoms: ["Ravenscourt Crown", "Greyford Marches", "The Merecourt Realm", "Alderwich Dominion", "Dunleigh Kingdom", "Kingsmarsh Crownlands", "Whitmere Compact", "Wyrford Principality"],
+    capitals: ["Ravenscourt", "Greyford", "Merecourt", "Alderwich", "Dunleigh", "Kingsmarsh", "Whitmere", "Wyrford", "Redmont", "Stonecross"],
+    towns: ["Brookeshire", "Ashford", "Hartwick", "Woldham", "Fenmere", "Westmere", "Oakenshire", "Thornbury", "Bridgeholt", "Crowsfell", "Norbury", "Highmere", "Marshgate", "Wychford", "Barrowby", "Eastwatch", "Merehaven", "Coldhurst", "Suttonmere", "Aldenbridge", "Foxglove Hill", "Oldbarrow", "Blackstone Ford", "Hallowmere", "Kingswold", "Redwych", "Millcourt", "Ravenstow", "Windermarch", "Greyholt"]
+  },
+  "Slavic": {
+    kingdoms: ["Velikograd Crown", "Morozna Marches", "Dravomir Dominion", "Zorynsk Pact", "Kreslav Principality", "Belovice Kingdom", "Radomir Union", "Vyshegor Realm"],
+    capitals: ["Velikograd", "Morozna", "Dravomir", "Zorynsk", "Kreslav", "Belovice", "Vyshegor", "Novabrod", "Snegorya", "Drazhova"],
+    towns: ["Volnograd", "Starovka", "Bronzovo", "Kamenets", "Dubrava", "Ruzhany", "Vetrovo", "Sokolov", "Mirovka", "Borislav", "Gromovo", "Chernevo", "Liskovo", "Ozerki", "Zimnik", "Pochin", "Krivitsa", "Dolinovo", "Varnitsa", "Pristav", "Medvedno", "Serebrya", "Klyuchevo", "Ravnagrad", "Kholmik", "Yarov", "Zelenka", "Roskva", "Drevnogor", "Belaya Most"]
+  },
+  "Mesoamerican": {
+    kingdoms: ["Xotlacan League", "Itzamalco Empire", "Tlaltepec Triple Crown", "Yohuallan River-Pact", "Cuauhquetz Dominion", "Tepozcalli Confederacy", "Xocotlan Sun-Realm", "Mixcapan Jade-Throne"],
+    capitals: ["Xotlacan", "Itzamalco", "Tlaltepec", "Yohuallan", "Cuauhquetz", "Tepozcalli", "Xocotlan", "Mixcapan", "Aztatlan", "Quetzalco"],
+    towns: ["Tenoquiya", "Xipatl", "Huitzapan", "Coatlixco", "Ocelopan", "Tzompanco", "Xaltepoc", "Mazatlan", "Chicahua", "Tlilco", "Yecatl", "Atlamaya", "Ixtenco", "Cuauhtzin", "Tletlapan", "Hueyaco", "Xochitlan", "Oztotla", "Tlalocan", "Xolochco", "Malinalco", "Tecuani", "Ehecatl", "Tlamacaz", "Coatepec", "Xochiya", "Citlalpan", "Tezcatla", "Acametz", "Yoloxco"]
+  },
+  "Maya": {
+    kingdoms: ["Balamkú Kingdom", "Tzakalha Crown", "Chanilná Dominion", "Xulbey Alliance", "K’inich-Tun Realm", "Uxmalen Pact", "Sakha’na Principality", "Nohoch League"],
+    capitals: ["Balamkú", "Tzakalha", "Chanilná", "Xulbey", "K’inich-Tun", "Uxmalen", "Sakha’na", "Nohoch", "Chakte’", "Yaxmú"],
+    towns: ["Itzamkú", "Chakha", "B’otzma", "Yaxkin", "Kabilná", "Tunkú", "Pakalha", "Nohchan", "Xamanil", "Tz’ibal", "K’ulha", "Balamna", "Holk’in", "Sakbey", "Ch’eenal", "Yalum", "K’anché", "Xulha", "Tz’ikin", "Akabná", "Tz’ulun", "Mutulmar", "K’axil", "Yaxha’na", "Tikalin", "Ixkan", "Uluum", "K’inam", "Chimalha", "Nalbey"]
+  },
+  "Creole": {
+    kingdoms: ["Bellemarais Crown", "Port Luneau League", "Vieux-Cypres Realm", "Saint Roux Dominion", "Marais-d’Or Kingdom", "Lac Rosier Compact", "Pointe-Étoile Principality", "Brumehaven Confederacy"],
+    capitals: ["Bellemarais", "Port Luneau", "Saint Roux", "Vieux-Cypres", "Marais-d’Or", "Lac Rosier", "Pointe-Étoile", "Brumehaven", "Gros-Tamarin", "Nouvelle Aurore"],
+    towns: ["Cypres-Noir", "Bayou Clair", "Petit Lagon", "Roux Landing", "Écrevisse", "Île Brûlée", "Vieux Quai", "Belle Rive", "Couronne Bay", "Pointe Sable", "Jardin Rouge", "Rosier Ferry", "Lune Marsh", "Maison-bleue", "Brume Point", "Port Serein", "Marais Vif", "Chênegris", "Creux-du-vent", "Tamarin Hollow", "Saint Marée", "Cœur d’Eau", "Grenouillère", "Bois Fumé", "Rivage Doré", "Vieux Moulin", "Sable-Argent", "Perle du Sud", "Lanterne Bay", "Cypres-Joli"]
+  },
+  "Mapuche": {
+    kingdoms: ["Antukura Confederacy", "Kalfuray Crown", "Rayenko Realm", "Wenu-Lafken League", "Pilmalén Dominion", "Llaimengén Kingdom", "Ngenkura Pact", "Rukalaf Realm"],
+    capitals: ["Antukura", "Kalfuray", "Rayenko", "Wenu-Lafken", "Pilmalén", "Llaimengén", "Ngenkura", "Rukalaf", "Lonkomapu", "Kutralwe"],
+    towns: ["Leftraru", "Ayünko", "Küyenkura", "Trufulko", "Pailalén", "Panguiko", "Wechulaf", "Lof Ruka", "Kallfütue", "Nahuelko", "Meliwe", "Pirelko", "Rüpüko", "Antülwe", "Wüñelfe", "Kuriñam", "Millalén", "Ñamkuwe", "Puelmapu", "Koyamko", "Likanray", "Rukaküla", "Wentewe", "Kutralpukem", "Lafkenwe", "Pichilaf", "Küyenwe", "Pewenko", "Nielol", "Rayenwe"]
+  },
+  "Norse": {
+    kingdoms: ["Frostvik Jarldom", "Skarnheim High-Kingdom", "Hrafnfjord Realm", "Stormholt Confederacy", "Ironwake Dominion", "Wolfbanner Holds", "Fjellcrown Pact", "Northstar Thing-Realm"],
+    capitals: ["Skarnheim", "Frostvik", "Hrafnfjord", "Stormholt", "Fjellgard", "Iceharrow", "Bjornhavn", "Svartholm", "Kaldheim", "Drakkarstead"],
+    towns: ["Ravenvik", "Snowfjord", "Oarholm", "Kragspire", "Hailstead", "Sealwatch", "Skeldale", "Frostmere", "Ironby", "Whalehaven", "Stormvik", "Fjellrun", "Northpass", "Birchheim", "Wolfbridge", "Skaldport", "Kettlefjord", "Grimnar", "Icegate", "Oakshield", "Coldwater", "Sunstone", "Driftwood Bay", "Spearholm", "Runecliff", "Sledford", "Bearhollow", "Saltmark", "Tundrahold", "Blackfjord"]
+  },
+  "Celtic": {
+    kingdoms: ["Dun Avarra High-Kingdom", "Inverbrae Realm", "Benmorrow Crown", "Ardglas Confederacy", "Loughcairn Dominion", "Caerwyll Pact", "Rowanvale Kingdom", "Mistglen League"],
+    capitals: ["Dun Avarra", "Inverbrae", "Caerwyll", "Ardglas", "Loughcairn", "Benmorrow", "Rowanhold", "Glenfinnanor", "Dunreath", "Brackenmoore"],
+    towns: ["Tírnawyn", "Glenarraidh", "Dunlarch", "Inverloch", "Benwick", "Caerstone", "Loughmere", "Rowanford", "Heatherby", "Mistwatch", "Braeport", "Cairnbridge", "Oakenshade", "Dunmuir", "Brambleglen", "Foxhollow", "Silverburn", "Ardwick", "Lochend", "Thistlebrae", "Highmoor", "Stonecircle", "Ferncombe", "Rillcairn", "Crowcroft", "Glenhaven", "Dunbarrow", "Harewood", "Driftglen", "Candleloch"]
+  },
+  "Spanish": {
+    kingdoms: ["Crown of Valcázar", "Reino de Altorre", "Sierraumbría Dominion", "Puertoluz Kingdom", "Rojaverde Realm", "Montebravío Marches", "Valleclaro Confederacy", "Santa Bravía Crownlands"],
+    capitals: ["Valcázar", "Altorre", "Puertoluz", "Sierraumbría", "Rojaverde", "Valleclaro", "San Bravío", "Montecanto", "Torrealba", "Mirador Real"],
+    towns: ["Villa Cobre", "Fuente Clara", "Campo Rojo", "Peñafirme", "Prado Verde", "Puerto Sombra", "Torre del Sol", "Arroyoalto", "Valdeoro", "Sierra Azul", "Santa Nieve", "San Rocaflor", "Cañada Bruma", "Loma Serena", "Piedra Luz", "Villa Encina", "Río Dorado", "Castillejo", "Almenara Vieja", "Vado Real", "Monte Umbral", "Salinas Blancas", "Puente Ámbar", "Valle Hondo", "Brisa Mar", "Los Olmos", "Cobreclaro", "Miraflores", "San Lumbre", "Costa Firme"]
+  },
+  "Germanic": {
+    kingdoms: ["Eisenwald Kingdom", "Falkenstein Crown", "Sturmberg Dominion", "Silberwacht Realm", "Dornhafen League", "Grauburg Marches", "Wolfsmark Confederacy", "Hochstein Principality"],
+    capitals: ["Eisenwald", "Falkenstein", "Sturmberg", "Silberwacht", "Dornhafen", "Grauburg", "Hochstein", "Rotwald", "Adlerburg", "Klingenhafen"],
+    towns: ["Steinbruck", "Wolfsdorf", "Tannenfeld", "Grauheim", "Eisenfurt", "Adlerwacht", "Kaltbrunn", "Goldhafen", "Dornfeld", "Sturmwiese", "Schattental", "Silberquell", "Rabenau", "Hohenbruck", "Felsenwald", "Rotbrunn", "Birkendorf", "Kronburg", "Nebelheim", "Kesselmark", "Sonnenfurt", "Wolfshain", "Grunhain", "Hammerdorf", "Lindenbruck", "Frosthafen", "Eisenau", "Schwarzbruck", "Falkenau", "Bergwacht"]
+  },
+  "Gothic": {
+    kingdoms: ["Nachtburg Throne", "Vesperheim Dominion", "Ravenhallow Crown", "Thorncrypt Realm", "Blackmere Sovereignty", "Gloamford Marches", "Cernova Principality", "Dreadmont Covenant"],
+    capitals: ["Nachtburg", "Vesperheim", "Ravenhallow", "Thorncrypt", "Blackmere", "Gloamford", "Dreadmont", "Cernova", "Umberfall", "Mourndale"],
+    towns: ["Ashenwick", "Crowspire", "Wraithford", "Gravenhall", "Sablemere", "Hollowgrave", "Bleakbridge", "Nocturn Vale", "Widow’s Watch", "Candlekeep Hollow", "Bramblecrypt", "Shivercross", "Wolfsbane", "Ironchapel", "Blackthorn Row", "Vespergate", "Mistmourn", "Guttermoon", "Sorrowfield", "Nightmarket", "Stonewold", "Coldbarrow", "Ravenmoor", "Boneharbor", "Chapelshade", "Grimwater", "Thornwatch", "Palehaven", "Duskbury", "Marrowfen"]
+  },
+  "Swahili": {
+    kingdoms: ["Kilamoyo Sultanate", "Baharini Crown", "Mwangari Confederacy", "Pwaniya League", "Zawadira Dominion", "Kivuli Coast Realm", "Mji Mkuu Compact", "Nyota ya Bahari Kingdom"],
+    capitals: ["Kilamoyo", "Baharini", "Mwangari", "Pwaniya", "Zawadira", "Bandari Kuu", "Mji wa Kivuli", "Kisiwa Kikuu", "Soko la Dhahabu", "Mlimani Mkuu"],
+    towns: ["Bandari Ndogo", "Mtoni", "Mtepe Bay", "Kijani Point", "Kipepo", "Maziwa", "Koraleni", "Pweza Cove", "Upepo Mkuu", "Mchanga Mweupe", "Mwamba Mkuu", "Kisiwani", "Pori la Bahari", "Mnazi Grove", "Tangaferi", "Kijiji cha Nyota", "Maporomoko", "Kivuko", "Mto Safi", "Nyasi Kavu", "Chemchemi", "Uwanja wa Soko", "Kisiwa Kidogo", "Chumvi Bay", "Tufani Watch", "Jua Kuu", "Mvua Ndogo", "Barabara ya Spice", "Bahari ya Kioo", "Mwanga Harbor"]
+  },
+  "Amharic": {
+    kingdoms: ["Tesharen Crown", "Mekdaret Kingdom", "Debrassa Dominion", "Selamaya Realm", "Arkenet Throne", "Woldemir Marches", "Kidus Heights Pact", "Dawitara Confederacy"],
+    capitals: ["Tesharen", "Mekdaret", "Debrassa", "Selamaya", "Arkenet", "Woldemir", "Kidus", "Dawitara", "Asterim", "Gonderael"],
+    towns: ["Abrenet", "Fikeran", "Mulugeta", "Semayen", "Berhanet", "Tigrasha", "Adarash", "Zerafim", "Hiwotna", "Endase", "Weynade", "Qidam", "Sionet", "Debre Selam", "Meskela", "Gashena", "Abayford", "Tana Crossing", "Tsedey", "Alemket", "Yared", "Wubalem", "Abrehot", "Menda", "Dagmawi", "Mariamkota", "Tekleham", "Lasta Gate", "Enqulal", "Guna Ridge"]
+  },
+  "Berber / Amazigh": {
+    kingdoms: ["Aghzar Confederacy", "Tizren High-Kingdom", "Ifranar Pact", "Tamazrit Realm", "Zimrane Dominion", "Awrigha Crown", "Taghzerth League", "Ouarzen Throne"],
+    capitals: ["Aghzar", "Tizren", "Ifranar", "Tamazrit", "Zimrane", "Awrigha", "Taghzerth", "Ouarzen", "Tamasna", "Ighremn"],
+    towns: ["Tizi Wadi", "Ighil Pass", "Aït Saren", "Aït Kher", "Tazrout", "Awrir", "Timlil", "Azroun", "Tighremt", "Oued Zafir", "Tinrhir", "Ifrin Spring", "Tamezgha", "Aksil", "Tazgagh", "Amellal", "Izenzaren", "Tafoukt", "Ighzer Bay", "Tazdayt", "Aït Moun", "Tizi Lune", "Ghomara Watch", "Tafrara", "Ifru Gate", "Awrigh Harbor", "Zriwa", "Tissem", "Jbel Nadir", "Tighza"]
+  },
+  "Yoruba": {
+    kingdoms: ["Aderola Kingdom", "Oshunfemi Crown", "Iyalonde Confederacy", "Akinyemi Realm", "Oranmiyan Dominion", "Temidun League", "Ifedayo Compact", "Oba’kemi Throne"],
+    capitals: ["Aderola", "Oshunfemi", "Iyalonde", "Akinyemi", "Oranmiyan", "Temidun", "Ifedayo", "Oba’kemi", "Ilé-Ayo", "Oke Sango"],
+    towns: ["Oja-ọba", "Aafin Gate", "Ipetu", "Isegbọn", "Oke-Ala", "Itanméjì", "Agbo’le", "Ile-iṣẹ", "Omi-ọrun", "Ayelujara", "Odo-Iyanu", "Igbó-Rere", "Arinlọ́", "Oke-Mimo", "Ijagun Road", "Ajé Market", "Irele", "Igbọ́nla", "Odo-Sun", "Iponri", "Ayo’fẹ", "Iyanla", "Oke-ọba", "Ilé-Mẹta", "Ekunfield", "Igbọnsẹ", "Odo-Gold", "Irupe", "Ogba-Royal", "Oke-Iranti"]
+  },
+  "Persian": {
+    kingdoms: ["Shahristan Empire", "Golbahar Kingdom", "Mehrabad Dominion", "Khosravan Throne", "Nargesshar Realm", "Sormehdar Principality", "Darvashan League", "Aftabzar Crownlands"],
+    capitals: ["Shahristan", "Golbahar", "Mehrabad", "Khosravan", "Nargesshar", "Sormehdar", "Darvashan", "Aftabzar", "Roshangar", "Simurghad"],
+    towns: ["Gulshan", "Shirinabad", "Khorshid Gate", "Sarvistan", "Baharestan", "Yazdara", "Mehrkand", "Narinfort", "Zarrinrud", "Saffronway", "Kharavan", "Dustrose", "Pearl Oasis", "Shamspar", "Khezran", "Golnar", "Mirror Bazaar", "Cypress Hill", "Sorkhbridge", "Khaneh-Sefid", "Aftab Springs", "Sable Caravanserai", "Ravanpur", "Niyazbad", "Farrokh Field", "Qanatri", "Lalehzar", "Dastanford", "Silver Qanat", "Mehran Reach"]
+  },
+  "Arabi": {
+    kingdoms: ["Dar al-Nur Caliphate", "Qasr Saffar Sultanate", "Wadi Sirr Emirate", "Al-Qamarayn Kingdom", "Bayt al-Rih Dominion", "Madinat Hazim Realm", "The Seven Oases Pact", "Crescent Coast Confederacy"],
+    capitals: ["Dar al-Nur", "Al-Qamarayn", "Qasr Saffar", "Madinat Hazim", "Wadi Sirr", "Bayt al-Rih", "Ain al-Jannah", "Souq al-Kibar", "Al-Basira", "Qalat al-Nahar"],
+    towns: ["Wadi al-Salt", "Ain Safiya", "Qasr al-Jabal", "Bir al-Hajar", "Al-Khazna", "Madinat al-Qidam", "Souq al-Mithqal", "Saffar Gate", "Al-Rimal", "Qalat Dunes", "Al-Najm Harbor", "Bayt al-Sidr", "Wadi al-Zahir", "Ain al-Lulu", "Dar al-Kitab", "Qasr al-Ward", "Al-Hilm", "Al-Sahra Cross", "The Copper Wells", "Qalat al-Sifr", "Wadi al-Asal", "Al-Mina al-Qadim", "Bir al-Noor", "Al-Ghurub", "Qasr al-Matar", "Ain al-Qamar", "Al-Fajr", "Qalat al-Sirr", "Wadi al-Khayl", "Bayt al-Fanar"]
+  },
+  "Indian": {
+    kingdoms: ["Suryapura Rajya", "Chandragarh Kingdom", "Vasantipur Dominion", "Vajranagar Empire", "Amritkhet Crownlands", "Rajanagar Confederacy", "Nilashakti Realm", "Kanchanpura Pact"],
+    capitals: ["Suryapura", "Chandragarh", "Vasantipur", "Vajranagar", "Amritkhet", "Rajanagar", "Nilashakti", "Kanchanpura", "Devnagar", "Sindhuraj"],
+    towns: ["Padmapur", "Shankargarh", "Kesarinagar", "Nandipur", "Rishikhet", "Jayanagar", "Kalyanpura", "Surajghat", "Chitrakund", "Pushpavati", "Durgapath", "Raktapuri", "Anandpur", "Shubhamar", "Varunagar", "Ratnapur", "Keshavpur", "Bhanupura", "Madhughat", "Saffronfield", "Gauripur", "Lakshmipur", "Ashoknagar", "Satyagarh", "Devkhet", "Indravan", "Marudhar", "Udaypura", "Neelghat", "Prakashpur"]
+  },
+  "Jappanesse": {
+    kingdoms: ["Kagemori Shogunate", "Aoyama Realm", "Tsukigawa Domain", "Harusato Confederacy", "Kuroshima Crown", "Minatose League", "Shirogane Regency", "Hoshinari Principality"],
+    capitals: ["Kagemori", "Aoyama", "Tsukigawa", "Harusato", "Kuroshima", "Minatose", "Shirogane", "Hoshinari", "Kasumigawa", "Takamori"],
+    towns: ["Yamashiro", "Kawaura", "Mizuho", "Fuyukawa", "Hinode", "Suginami", "Tsurumori", "Akatsuki", "Komorebi", "Natsuhama", "Kogarashi", "Arashiyama", "Kiritani", "Momiji Vale", "Shirokawa", "Kanasato", "Umebayashi", "Sakuragi", "Otafune", "Tsubakino", "Kurogane", "Hoshikawa", "Amahara", "Mizunoki", "Kisaragi", "Sazanami", "Harukaze", "Yoruishi", "Tanukimura", "Umikage"]
+  },
+  "China": {
+    kingdoms: ["Lingshan Dynasty", "Yunhe Mandate", "Longdao Empire", "Heshui Crownlands", "Shuangfen Kingdom", "Jadegate Realm", "Mingyuan Confederacy", "Tianlu Principality"],
+    capitals: ["Lingshan", "Yunhe", "Longdao", "Heshui", "Shuangfen", "Jadegate", "Mingyuan", "Tianlu", "Qingshui", "Fengcheng"],
+    towns: ["Baihe", "Qiujiang", "Hongqiao", "Shilin", "Xuanping", "Jinsha", "Yunling", "Beifang", "Nanwan", "He’an", "Wanshi", "Qingdao", "Lianhua", "Shuanghe", "Fenglin", "Luoyun", "Guangyuan", "Jintai", "Lingquan", "Yushan", "Shuangyu", "Yuelu", "Zhenhai", "Anmen", "Foguang", "Xinhai", "Ping’an Ford", "Huayang", "Cangshan", "Xianghe"]
+  },
+  "Mongoal": {
+    kingdoms: ["Ordukhai Khaganate", "Altanbulag Realm", "Kherlen Bannerlands", "Borogont Confederacy", "Saranqad Kingdom", "Khukh Uul Dominion", "Tengriwind Pact", "Iron Steppe Union"],
+    capitals: ["Ordukhai", "Altanbulag", "Kherlenfort", "Borogont", "Saranqad", "Khukh Uul", "Khagan’s Ordu", "Erdene Camp", "Tumen Gate", "Kharkhor Vale"],
+    towns: ["Khulanford", "Blue Steppe", "Boroo Camp", "Suld Watch", "Khangai Pass", "Ulaanmere", "Tenger Ridge", "Orkhon Bend", "Naiman Post", "Khoshuu Crossing", "Altai Spur", "Sable Herd", "Kherlen Ferry", "Windbanner", "Stone Yurt", "Erdene Wells", "Khara Ridge", "Saran Pastures", "Wolfplain", "Skyhook Fort", "Camelbreak", "Iron Saddle", "White Cairn", "Raven Steppe", "Golden Larch", "Thunder Camp", "Bitter Springs", "Ongi Ford", "Tumen Market", "Dawn Ordu"]
+  },
+  "Māori": {
+    kingdoms: ["Rangikoru Hapu", "Ngatirua Confederacy", "Wharetui Crown", "Awanui League", "Te Maruora Realm", "Kaitiaki Dominion", "Moana-Tapu Pact", "Waiora Kingdom"],
+    capitals: ["Rangikoru", "Ngatirua", "Wharetui", "Awanui", "Te Maruora", "Waiora", "Taitoko", "Pounamura", "Te Rerewai", "Whangaora"],
+    towns: ["Whangaroa", "Arahura", "Te Kauri", "Waiwhenua", "Ngaherepa", "Rimu Bay", "Pukerangi", "Te Korowai", "Haukawa", "Wairere", "Whakatū", "Te Awa Rua", "Kohutai", "Raukura", "Te Puna", "Manawaroa", "Ngaio Point", "Te Mātārae", "Kōwhai Glen", "Tūrangawaewae", "Maramarua", "Kaimoana", "Te Onepū", "Kaituna", "Wharemoana", "Puketapu", "Te Uruwhenua", "Rangipuke", "Waimaru", "Te Raukawa"]
+  },
+  "Polynesian": {
+    kingdoms: ["Leilomara Kingdom", "Kanaloa Coast Realm", "Moanapua Confederacy", "Hinalua Dominion", "Kailenui Crown", "Pualani League", "Naluwai Pact", "Sunreef Sovereignty"],
+    capitals: ["Leilomara", "Kanaloa Cove", "Moanapua", "Hinalua", "Kailenui", "Pualani", "Naluwai", "Kealohar", "Hoku’ala", "Anuenue"],
+    towns: ["Kaimana", "Lanikai", "Palihoa", "Hokuwai", "Keawe Bay", "Maunaleo", "Niuport", "Pua Reef", "Haleena", "Kaihonu", "Moana Vale", "Kalo Springs", "Lihuea", "Haliima", "Kuulei", "Nahele Grove", "Aolani", "Keone Point", "Manuiki", "Waiolu", "Hoku Harbor", "Punaiti", "Alamea", "Kilikina", "Loloa Cove", "Mokuiki", "Puuhonu", "Kahili Bay", "Iwa Ridge", "Maluhia"]
+  },
+  "Korean": {
+    kingdoms: ["Haneuljin Kingdom", "Gwangseong Realm", "Baekmoru Dominion", "Miraesan Confederacy", "Seorabeol Crown", "Dalbawi Pact", "Cheonghae League", "Wolseong Throne"],
+    capitals: ["Haneuljin", "Gwangseong", "Baekmoru", "Miraesan", "Seorabeol", "Wolseong", "Cheonghae", "Dalbawi", "Hwangjin", "Songdo"],
+    towns: ["Bukjin", "Namseong", "Seongmun", "Jangsan", "Haeju", "Guryong", "Baekseon", "Yeonhwa", "Cheonma", "Munseong", "Soban", "Seolwon", "Gaeulchon", "Haneulgae", "Daejin", "Gilsu", "Byeolcheon", "Duri", "Saryeong", "Haecheon", "Gwangjin", "Miraegol", "Cheongrim", "Hwangsan", "Dalmun", "Seongha", "Jinsong", "Baekgok", "Wolam", "Areumdae"]
+  },
+  "Fijian": {
+    kingdoms: ["Burevanu Confederacy", "Lomavatu Kingdom", "Nadarivo Realm", "Vunilagi Dominion", "Koroqiri League", "Sigasiga Crown", "Dravuni Pact", "Qeleni Sovereignty"],
+    capitals: ["Burevanu", "Lomavatu", "Nadarivo", "Vunilagi", "Koroqiri", "Sigasiga", "Dravuni", "Qeleni", "Navatu", "Kadavu Hold"],
+    towns: ["Vatuvonu", "Lomaloma", "Vunimoli", "Korolevu", "Nabukadra", "Daku Bay", "Naisoso", "Delai Point", "Sese Cove", "Vunibaka", "Lomai Ridge", "Tavua Springs", "Vunidawa", "Nadroga Cross", "Qara Harbor", "Vadravadra", "Nairai", "Bua Gate", "Cakaudrove", "Sigatoka Watch", "Namoli", "Vuniwai", "Udu Point", "Nacula", "Waya Bay", "Yasawa Post", "Ketei", "Vunigau", "Lotoiqere", "Navosa"]
+  },
+  "Sinipore": {
+    kingdoms: ["Temasek Crownlands", "Lionquay Dominion", "Orchidgate League", "Merlion Harbor Realm", "Sunbird Bay Confederacy", "Seranglass Kingdom", "Spicebridge Pact", "South Straits Sovereignty"],
+    capitals: ["Temasek Reach", "Lionquay", "Orchidgate", "Merlion Harbor", "Sunbird Bay", "Seranglass", "Spicebridge", "South Straits City", "Tanjong Star", "Marina Jade"],
+    towns: ["Lantern Quay", "Pearl Market", "Coral Causeway", "Bayfront Ward", "Kampong Ember", "Riverstone Pier", "Jade Orchard", "Brass Lanterns", "Crescent Arcade", "Palmglass", "Spice Row", "Skygarden", "Rainbridge", "Serangoon Vale", "Southpoint", "Seagrace", "Orchardmere", "Lanternhill", "Harborview", "Saltwind", "Meridian Gate", "Suntech Strand", "Golden Hawker", "Glassdock", "Reefline", "Willow Quay", "Temasek Fields", "Marina Cross", "Night Bazaar", "Lionwalk"]
+  },
+  "Lizardfok": {
+    kingdoms: ["Sseskar Marsh-Crown", "Vethiss River-Throne", "Xal’thassa Delta Realm", "Reedfang Dominion", "Coilwater Confederacy", "Hissmire Pact", "Saurian Crownlands", "The Sunscale League"],
+    capitals: ["Sseskar", "Vethiss", "Xal’thassa", "Hissmire", "Reedfang", "Marshcoil", "Ssilthara", "Zheth’kora", "Vassith", "Ssarkuun"],
+    towns: ["Siltjaw", "Reedhollow", "Mudscale", "Hushfen", "Ssaril Dock", "Crookmire", "Coilbridge", "Mirewatch", "Rattlebank", "Brackwater", "Sunreed", "Viperpool", "Slitherford", "Swampgate", "Bogspire", "Driftmangrove", "Scalehaven", "Marshmarket", "Toadstone", "Gatorrun", "Fenbarrow", "Saltslip", "Sedgeway", "Hollowdelta", "Murkport", "Eelcross", "Blackreed", "Wyrdwater", "Croccliff", "Lurkwater"]
+  },
+  "Orcish": {
+    kingdoms: ["Kraghusk Hordelands", "Grukmar Dominion", "Ironjaw Kingdom", "Bloodbanner Marches", "Skullcrag Realm", "Blacktusk Confederacy", "Warhowl Pact", "The Redfang Crown"],
+    capitals: ["Kraghusk", "Grukmar", "Ironjaw Hold", "Skullcrag", "Blacktusk", "Bloodgate", "Warhowl", "Redfang Keep", "Ashmaw", "Brutehall"],
+    towns: ["Gutterspear", "Grimtooth", "Bonebridge", "Rustgorge", "Ragstone", "Kragford", "Stonemaul", "Bloodrun", "Scarhill", "Smashfield", "Howler’s Pass", "Blackrock Camp", "Goretown", "Spitewatch", "Axenest", "Bronzebite", "Thornskull", "Skullmarket", "Redpit", "Warspike", "Shatterridge", "Mudfist", "Ashtrail", "Ironclaw", "Grubstead", "Cindermaw", "Breakwater Fort", "Wolfjaw", "Rattlecrag", "Sunderpost"]
+  },
+  "Gnomish": {
+    kingdoms: ["Tinkerspark League", "Clockwhistle Crown", "Brassbloom Republic", "Gearhollow Compact", "Whimsyvale Realm", "Copperkettle Kingdom", "Sparkspinner Dominion", "The Luminwork Union"],
+    capitals: ["Tinkerspark", "Clockwhistle", "Brassbloom", "Gearhollow", "Whimsyvale", "Copperkettle", "Luminwork", "Springvale", "Rivetwick", "Glimmergear"],
+    towns: ["Sprocketon", "Jiggleford", "Whirligig Way", "Rivetbrook", "Pistonbury", "Bellowsby", "Quibbleton", "Snipnap", "Gearsong", "Copperdown", "Valvefield", "Tinbright", "Lanternwick", "Buttonbridge", "Kettlecross", "Doodleham", "Sparkfen", "Wobblegate", "Crankmere", "Poppet Hall", "Rattlewell", "Gizmo Glen", "Saffron Sprockets", "Tinker’s Rest", "Glintquay", "Needlepoint", "Clatterdale", "Windup Wharf", "Marblemint", "Clocktower Row"]
+  },
+  "Infernal / Tiefling": {
+    kingdoms: ["Malzareth Dominion", "The Ashen Compact", "Vel’Kharis Principality", "The Brassbound Throne", "Sableflame Empire", "Contracted Crownlands", "The Ninth Banner Realm", "Hellglass Confederacy"],
+    capitals: ["Malzareth", "Vel’Kharis", "Sableflame", "Brassbound Citadel", "Ashen Ledger", "Hellglass", "Umberpyre", "Zaravoss", "Cindervault", "Redscript"],
+    towns: ["Embercourt", "Brimstone Bay", "Inkmarket", "Cinderquay", "Basaltford", "Sootminster", "Redwrit", "Ashchapel", "Ledgerline", "Coalport", "Vellum Gate", "Giltfire", "Iron Oath", "Charspire", "Scorchedown", "Blackseal", "Pyrebridge", "Tithefield", "Sinharbor", "Glassgrave", "Oathwell", "Devil’s Step", "Crimson Wharf", "Smolderwick", "Sealstone", "Furnacehold", "Contract Row", "Cinderhallows", "Ashen Mile", "Nightbrand"]
+  },
+  "Generic Medieval": {
+    kingdoms: ["Kingdom of Westreach", "The Highmere Crown", "Ironvale Realm", "Riverwatch Marches", "Stonebanner Kingdom", "Greenwood League", "Dawnward Dominion", "The Amber Throne"],
+    capitals: ["Highmere", "Westreach", "Riverwatch", "Stonebanner", "Ironvale", "Dawnspire", "Kingsfall", "Goldhaven", "Thornkeep", "Amberhold"],
+    towns: ["Brookford", "Millhaven", "Eastwatch", "Redbridge", "Whitecliff", "Oakridge", "Barrowgate", "Lakeside", "Fairhill", "Crosswych", "Greenfield", "Thornbury", "Greywater", "Southmere", "Kingsford", "Hartham", "Brackenholt", "Candlewick", "Stoneford", "Windmere", "Falcon’s Rest", "Alderstead", "Oldcastle", "Sablebrook", "Hart’s Hollow", "Northpass", "Sunmeadow", "Briarwatch", "Rivermouth", "Marketcross"]
+  }
+};
+
+const CONFIG = { WIDTH: 1200, HEIGHT: 900, RIVER_SOURCES: 120, SETTLEMENT_DENSITY: 0.00075 };
+// v2.6-style palette (prettier oceans + more biomes)
+// v2.6-style palette (prettier oceans + more biomes)
+const BIOMES = {
+  Abyssal: "#0a1e3d",
+  DeepOcean: "#152d52",
+  Ocean: "#1b3c73",
+  Coast: "#e8d1a7",
+  Desert: "#f0dfb1",
+  Plains: "#92b84a",
+  Forest: "#1a5e2b",
+  Tundra: "#a8c0bf",
+  Taiga: "#426b3e",
+  Mountains: "#7a7a7a",
+  IcePeaks: "#d9f0ff"
+};
+class Cell {
+  constructor(x, y) {
+    this.x = x; this.y = y;
+
+    this.height = 0;
+    this.moisture = 0;
+    this.temp = 0;
+
+    this.river = false;
+    this.isIsland = false;
+
+    this.biome = "Ocean";
+
+    this.kingdom = null;
+    this.settlement = null; // "Capital" | "City" | "Town"
+    this.name = "";
+  }
+}
+
+function seeded(s) { return () => { s = Math.sin(s) * 10000; return s - Math.floor(s); }; }
+
+class SimplexNoise {
+  constructor(rand) {
+    this.p = new Uint8Array(256);
+    for (let i = 0; i < 256; i++) this.p[i] = i;
+    for (let i = 255; i > 0; i--) {
+      const j = Math.floor(rand() * (i + 1));
+      [this.p[i], this.p[j]] = [this.p[j], this.p[i]];
+    }
+    this.perm = new Uint8Array(512);
+    for (let i = 0; i < 512; i++) this.perm[i] = this.p[i & 255];
+  }
+  noise2D(xin, yin) {
+    let n0, n1, n2;
+    const F2 = 0.5 * (Math.sqrt(3.0) - 1.0);
+    const s = (xin + yin) * F2;
+    const i = Math.floor(xin + s);
+    const j = Math.floor(yin + s);
+    const G2 = (3.0 - Math.sqrt(3.0)) / 6.0;
+    const t = (i + j) * G2;
+    const x0 = xin - (i - t);
+    const y0 = yin - (j - t);
+    let i1, j1;
+    if (x0 > y0) { i1 = 1; j1 = 0; } else { i1 = 0; j1 = 1; }
+    const x1 = x0 - i1 + G2;
+    const y1 = y0 - j1 + G2;
+    const x2 = x0 - 1.0 + 2.0 * G2;
+    const y2 = y0 - 1.0 + 2.0 * G2;
+    const ii = i & 255; const jj = j & 255;
+
+    let t0 = 0.5 - x0 * x0 - y0 * y0;
+    if (t0 < 0) n0 = 0.0;
+    else { t0 *= t0; n0 = t0 * t0 * this.grad(this.perm[ii + this.perm[jj]], x0, y0); }
+
+    let t1 = 0.5 - x1 * x1 - y1 * y1;
+    if (t1 < 0) n1 = 0.0;
+    else { t1 *= t1; n1 = t1 * t1 * this.grad(this.perm[ii + i1 + this.perm[jj + j1]], x1, y1); }
+
+    let t2 = 0.5 - x2 * x2 - y2 * y2;
+    if (t2 < 0) n2 = 0.0;
+    else { t2 *= t2; n2 = t2 * t2 * this.grad(this.perm[ii + 1 + this.perm[jj + 1]], x2, y2); }
+
+    return 70.0 * (n0 + n1 + n2);
+  }
+  grad(hash, x, y) {
+    const h = hash & 7;
+    const u = h < 4 ? x : y; const v = h < 4 ? y : x;
+    return ((h & 1) ? -u : u) + ((h & 2) ? -2.0 * v : 2.0 * v);
+  }
+  fbm(x, y, octaves = 7, freq = 0.0018) {
+    let total = 0, frequency = freq, amplitude = 1, maxValue = 0;
+    for (let i = 0; i < octaves; i++) {
+      total += this.noise2D(x * frequency, y * frequency) * amplitude;
+      maxValue += amplitude; amplitude *= 0.5; frequency *= 2;
+    }
+    return total / maxValue;
+  }
+}
+
+function getNeighbors(world, x, y) {
+  const res = [];
+  if (y > 0) res.push(world[y - 1][x]);
+  if (y < CONFIG.HEIGHT - 1) res.push(world[y + 1][x]);
+  if (x > 0) res.push(world[y][x - 1]);
+  if (x < CONFIG.WIDTH - 1) res.push(world[y][x + 1]);
+  return res;
+}
+
+let WORLD = [];
+let KINGDOMS = [];
+let RNG = null;
+let VIEW_MODE = 'terrain';
+
+function generate() {
+  let seed = parseInt(document.getElementById("seedInput").value);
+  if (isNaN(seed)) {
+    seed = Math.floor(Math.random() * 999999);
+    document.getElementById("seedInput").value = seed;
+  }
+
+  const kCount = parseInt(document.getElementById("kRange").value);
+  const seaLevel = parseInt(document.getElementById("seaRange").value);
+  const islandDensity = parseInt(document.getElementById("islandRange").value);
+
+  RNG = seeded(seed);
+  const noise = new SimplexNoise(RNG);
+
+  WORLD = Array.from({ length: CONFIG.HEIGHT }, (_, y) =>
+    Array.from({ length: CONFIG.WIDTH }, (_, x) => new Cell(x, y))
+  );
+
+  // 1) Geography + climate
+  for (let y = 0; y < CONFIG.HEIGHT; y++) {
+    for (let x = 0; x < CONFIG.WIDTH; x++) {
+      const cell = WORLD[y][x];
+
+      let h = (noise.fbm(x, y) + 1) / 2; // 0..1
+      const dx = (x / CONFIG.WIDTH) - 0.5, dy = (y / CONFIG.HEIGHT) - 0.5;
+      const dist = Math.sqrt(dx * dx + dy * dy) * 2.1;
+
+      let baseHeight = h * 100 * Math.max(0, 1 - Math.pow(dist, 2.5));
+
+      // v2.6 island band just below sea level
+      if (baseHeight < seaLevel && baseHeight > seaLevel - 15) {
+        const islandNoise = (noise.fbm(x, y, 4, 0.015) + 1) / 2;
+        const threshold = 1 - (islandDensity / 100);
+        if (islandNoise > threshold) {
+          baseHeight = seaLevel + (islandNoise * 18);
+          cell.isIsland = true;
+        }
+      }
+
+      cell.height = baseHeight;
+
+      const latFactor = 1 - Math.abs((y / CONFIG.HEIGHT) - 0.5) * 2;
+      cell.temp = (latFactor * 60) + (noise.fbm(x, y, 3, 0.01) * 20) - (cell.height * 0.4);
+      cell.moisture = (noise.fbm(x + 500, y + 500, 4, 0.002) + 1) * 50;
+    }
+  }
+
+  // 2) Rivers
+  for (let i = 0; i < CONFIG.RIVER_SOURCES; i++) {
+    let curr = WORLD[Math.floor(RNG() * CONFIG.HEIGHT)][Math.floor(RNG() * CONFIG.WIDTH)];
+    if (curr.height < (seaLevel + 27) || curr.isIsland) continue; // v2.6: 65 when sea=38
+
+    while (curr && curr.height > seaLevel && !curr.river) {
+      curr.river = true;
+      let lowest = curr;
+      getNeighbors(WORLD, curr.x, curr.y).forEach(n => { if (n.height < lowest.height) lowest = n; });
+      if (lowest === curr) break;
+      curr = lowest;
+    }
+  }
+
+  // 3) Biomes
+  for (let y = 0; y < CONFIG.HEIGHT; y++) {
+    for (let x = 0; x < CONFIG.WIDTH; x++) {
+      const c = WORLD[y][x];
+
+      if (c.height <= seaLevel) {
+        if (c.height < 15) c.biome = "Abyssal";
+        else if (c.height < 28) c.biome = "DeepOcean";
+        else c.biome = "Ocean";
+      } else if (c.height > 90) c.biome = "IcePeaks";
+      else if (c.height > 78) c.biome = "Mountains";
+      else if (c.temp < 5) c.biome = "Tundra";
+      else if (c.temp < 15) c.biome = "Taiga";
+      else if (c.moisture < 25) c.biome = "Desert";
+      else if (c.moisture < 45) c.biome = "Plains";
+      else if (c.height < seaLevel + 4) c.biome = "Coast";
+      else c.biome = "Forest";
+    }
+  }
+
+  // 4) Culture Kingdoms (your v4 logic)
+  KINGDOMS = [];
+  const capitals = [];
+  const cultureKeys = Object.keys(CULTURES);
+
+  for (let i = 0; i < kCount; i++) {
+    let attempts = 0;
+    while (attempts < 1200) {
+      const rx = Math.floor(RNG() * CONFIG.WIDTH);
+      const ry = Math.floor(RNG() * CONFIG.HEIGHT);
+      const c = WORLD[ry][rx];
+
+      // nicer placement like v2.6: mid-elevation, decent temp, not too close, not deep island
+      if (
+        c.height > seaLevel + 5 &&
+        c.height < 75 &&
+        c.temp > 10 &&
+        !capitals.some(p => Math.hypot(p.x - rx, p.y - ry) < 65)
+      ) {
+        const cultureName = cultureKeys[i % cultureKeys.length];
+        const cult = CULTURES[cultureName];
+
+        const kData = {
+          id: i,
+          color: `hsl(${(i * (360 / kCount)) % 360}, 65%, 45%)`,
+          culture: cultureName,
+          name: cult.kingdoms[Math.floor(RNG() * cult.kingdoms.length)],
+          capital: cult.capitals[Math.floor(RNG() * cult.capitals.length)]
+        };
+
+        KINGDOMS.push(kData);
+
+        c.kingdom = i;
+        c.settlement = "Capital";
+        c.name = kData.capital;
+
+        capitals.push({ x: rx, y: ry, id: i });
+        break;
+      }
+      attempts++;
+    }
+  }
+
+  // Expansion (4-neighbor flood fill)
+  let queue = capitals.map(p => ({ x: p.x, y: p.y, id: p.id }));
+  while (queue.length > 0) {
+    const next = [];
+    queue.forEach(p => {
+      [[0,1],[0,-1],[1,0],[-1,0]].forEach(d => {
+        const nx = p.x + d[0], ny = p.y + d[1];
+        if (nx >= 0 && nx < CONFIG.WIDTH && ny >= 0 && ny < CONFIG.HEIGHT) {
+          const cell = WORLD[ny][nx];
+          if (cell.height > seaLevel && cell.kingdom === null) {
+            cell.kingdom = p.id;
+            next.push({ x: nx, y: ny, id: p.id });
+          }
+        }
+      });
+    });
+    queue = next;
+  }
+
+  // Settlements (v2.6-style density, but culture town names)
+  WORLD.flat().forEach(c => {
+    if (c.height > seaLevel && c.settlement === null && c.kingdom !== null) {
+      let chance = CONFIG.SETTLEMENT_DENSITY;
+      if (c.river) chance *= 6.5;
+      if (c.biome === "Coast") chance *= 5;
+      if (c.isIsland) chance *= 1.8;
+
+      if (RNG() < chance) {
+        const k = KINGDOMS[c.kingdom];
+        const pool = CULTURES[k.culture].towns;
+        c.settlement = (RNG() > 0.3) ? "Town" : "City";
+        c.name = pool[Math.floor(RNG() * pool.length)];
+      }
+    }
+  });
+
+  updateKingdomUI();
+  render();
+}
+
+function updateKingdomNames(kingdomIndex, newCulture) {
+  const k = KINGDOMS[kingdomIndex];
+  k.culture = newCulture;
+  const cult = CULTURES[newCulture];
+
+  // Pick new names (use RNG so it's consistent with the seed)
+  k.name = cult.kingdoms[Math.floor(RNG() * cult.kingdoms.length)];
+  k.capital = cult.capitals[Math.floor(RNG() * cult.capitals.length)];
+
+  // Update cells (capital + towns inside this kingdom)
+  for (let y = 0; y < CONFIG.HEIGHT; y++) {
+    for (let x = 0; x < CONFIG.WIDTH; x++) {
+      const c = WORLD[y][x];
+      if (c.kingdom !== kingdomIndex) continue;
+
+      if (c.settlement === "Capital") {
+        c.name = k.capital;
+      } else if (c.settlement === "Town" || c.settlement === "City") {
+        c.name = cult.towns[Math.floor(RNG() * cult.towns.length)];
+      }
+    }
+  }
+
+  updateKingdomUI();
+  render();
+}
+ 
+
+
+function updateKingdomUI() {
+  const container = document.getElementById("kingdom-list");
+  container.innerHTML = "";
+  
+  KINGDOMS.forEach(k => {
+    const div = document.createElement("div");
+    div.className = "kingdom-item";
+    div.style.setProperty("--k-color", k.color);
+    
+    let options = Object.keys(CULTURES).map(cName => 
+        `<option value="${cName}" ${cName === k.culture ? 'selected' : ''}>${cName}</option>`
+    ).join('');
+
+    div.innerHTML = `
+        <div class="k-header">
+            <span>${k.name}</span>
+            <span style="opacity:0.5; font-size: 0.6rem">ID ${k.id+1}</span>
+        </div>
+        <div class="k-sub">Seat: ${k.capital}</div>
+        <select class="k-select" onchange="updateKingdomNames(${k.id}, this.value)">
+            ${options}
+        </select>
+    `;
+    container.appendChild(div);
+  });
+}
+
+function render() {
+  const canvas = document.getElementById("mapCanvas");
+  const ctx = canvas.getContext("2d");
+  canvas.width = CONFIG.WIDTH;
+  canvas.height = CONFIG.HEIGHT;
+
+  const seaLevel = parseInt(document.getElementById("seaRange").value);
+
+  // Precompute kingdom RGB once per render (fast)
+  const kingdomRGB = KINGDOMS.map(k => hexToRgb(k.color));
+
+  const imgData = ctx.createImageData(CONFIG.WIDTH, CONFIG.HEIGHT);
+  const data = imgData.data;
+
+  for (let y = 0; y < CONFIG.HEIGHT; y++) {
+    for (let x = 0; x < CONFIG.WIDTH; x++) {
+      const c = WORLD[y][x];
+      let base = BIOMES[c.biome] || BIOMES.Ocean;
+
+      let rgb = hexToRgb(base);
+      let r = rgb.r, g = rgb.g, b = rgb.b;
+
+      // Simple shading on land
+      if (y > 0 && x > 0 && c.height > seaLevel) {
+        const hLeft = WORLD[y][x - 1].height;
+        const hUp = WORLD[y - 1][x].height;
+        const slope = (c.height - hLeft) + (c.height - hUp);
+        const shade = 1 + (slope * 0.07);
+        r = Math.min(255, r * shade);
+        g = Math.min(255, g * shade);
+        b = Math.min(255, b * shade);
+      }
+
+      // Shoreline blending band
+      if (c.height <= seaLevel && c.height > seaLevel - 3) {
+        r = r * 0.8 + 100 * 0.2;
+        g = g * 0.8 + 180 * 0.2;
+        b = b * 0.8 + 255 * 0.2;
+      }
+
+      // Political overlay
+      if (VIEW_MODE === "political" && c.kingdom !== null && c.height > seaLevel) {
+        const kcol = kingdomRGB[c.kingdom];
+        r = r * 0.3 + kcol.r * 0.7;
+        g = g * 0.3 + kcol.g * 0.7;
+        b = b * 0.3 + kcol.b * 0.7;
+      }
+
+      const idx = (y * CONFIG.WIDTH + x) * 4;
+      data[idx] = r; data[idx + 1] = g; data[idx + 2] = b; data[idx + 3] = 255;
+
+      // Rivers
+      if (c.river && c.height > seaLevel) {
+        data[idx] = 60; data[idx + 1] = 140; data[idx + 2] = 200;
+      }
+
+      // Borders
+      if (VIEW_MODE === "political" && c.height > seaLevel) {
+        if (
+          (x < CONFIG.WIDTH - 1 && WORLD[y][x + 1].kingdom !== c.kingdom) ||
+          (y < CONFIG.HEIGHT - 1 && WORLD[y + 1][x].kingdom !== c.kingdom)
+        ) {
+          data[idx] = 20; data[idx + 1] = 20; data[idx + 2] = 20;
+        }
+      }
+    }
+  }
+
+  ctx.putImageData(imgData, 0, 0);
+
+  // Labels & markers
+  ctx.textAlign = "center";
+  ctx.shadowColor = "rgba(0,0,0,0.9)";
+  ctx.shadowBlur = 5;
+
+  WORLD.flat().forEach(c => {
+    if (!c.settlement) return;
+
+    if (c.settlement === "Capital") {
+      ctx.fillStyle = "#ffd700";
+      ctx.font = "bold 16px serif";
+      ctx.fillText("✥", c.x, c.y);
+      ctx.fillStyle = "white";
+      ctx.font = "bold 12px Inter";
+      ctx.fillText(c.name.toUpperCase(), c.x, c.y - 14);
+    } else if (c.settlement === "City") {
+      ctx.fillStyle = "white";
+      ctx.font = "12px sans-serif";
+      ctx.fillText("○", c.x, c.y);
+      ctx.font = "10px Inter";
+      ctx.fillText(c.name, c.x, c.y - 12);
+    } else if (c.settlement === "Town") {
+      ctx.fillStyle = "#ddd";
+      ctx.font = "9px sans-serif";
+      ctx.fillText("•", c.x, c.y);
+    }
+  });
+}
+
+function hexToRgb(hex) {
+  if(hex.startsWith('rgb')) { const rgb = hex.match(/\d+/g); return {r: +rgb[0], g: +rgb[1], b: +rgb[2]}; }
+  if(hex.startsWith('hsl')) {
+    const t = document.createElement('div'); t.style.color = hex; document.body.appendChild(t);
+    const rgb = getComputedStyle(t).color.match(/\d+/g); document.body.removeChild(t);
+    return {r: +rgb[0], g: +rgb[1], b: +rgb[2]};
+  }
+  const result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
+  return result ? { r: parseInt(result[1], 16), g: parseInt(result[2], 16), b: parseInt(result[3], 16) } : {r:0,g:0,b:0};
+}
+
+function lerpColor(a, b, amount) {
+  const c1 = hexToRgb(a), c2 = hexToRgb(b);
+  return `rgb(${Math.round(c1.r + (c2.r-c1.r)*amount)}, ${Math.round(c1.g + (c2.g-c1.g)*amount)}, ${Math.round(c1.b + (c2.b-c1.b)*amount)})`;
+}
+
+function exportPNGWithLegend() {
+  const map = document.getElementById("mapCanvas");
+
+  // make sure the on-screen canvas is current
+  render();
+
+  const modeForFile = VIEW_MODE; // "terrain" or "political"
+  const seed = document.getElementById("seedInput").value || "seed";
+
+  // pick legend content based on mode
+  const legendType = (modeForFile === "political") ? "kingdoms" : "biomes";
+
+  const legendPadding = 18;
+  const legendHeight = 190;
+
+  const out = document.createElement("canvas");
+  out.width = map.width;
+  out.height = map.height + legendHeight;
+
+  const ctx = out.getContext("2d");
+
+  // draw map
+  ctx.drawImage(map, 0, 0);
+
+  // legend background
+  ctx.fillStyle = "rgba(10,10,10,0.95)";
+  ctx.fillRect(0, map.height, out.width, legendHeight);
+
+  // legend title
+  ctx.fillStyle = "#fff";
+  ctx.font = "bold 16px Inter, sans-serif";
+  ctx.textAlign = "left";
+  ctx.textBaseline = "top";
+
+  const title =
+    legendType === "kingdoms"
+      ? `Kingdom Legend (political view)`
+      : `Biome Legend (terrain view)`;
+
+  ctx.fillText(title, legendPadding, map.height + 10);
+
+  // layout helpers
+  const startY = map.height + 40;
+  const rowH = 20;
+  const swatch = 14;
+  const gap = 10;
+
+  // build items
+  let items = [];
+  if (legendType === "kingdoms") {
+    items = KINGDOMS.map((k, i) => ({
+      label: `${i + 1}. ${k.name} (${k.culture})`,
+      color: k.color
+    }));
+  } else {
+    const biomeOrder = Object.keys(BIOMES);
+    items = biomeOrder.map(b => ({
+      label: b,
+      color: BIOMES[b]
+    }));
+  }
+
+  // columns
+  const colW = legendType === "kingdoms" ? 340 : 240;
+  const cols = Math.max(1, Math.floor((out.width - legendPadding * 2) / colW));
+  const rowsPerCol = Math.floor((legendHeight - 55) / rowH);
+
+  ctx.font = "12px Inter, sans-serif";
+  ctx.textBaseline = "top";
+
+  items.forEach((it, i) => {
+    const col = Math.floor(i / rowsPerCol);
+    const row = i % rowsPerCol;
+    if (col >= cols) return;
+
+    const x = legendPadding + col * colW;
+    const y = startY + row * rowH;
+
+    ctx.fillStyle = it.color;
+    ctx.fillRect(x, y + 2, swatch, swatch);
+
+    ctx.fillStyle = "#e5e5e5";
+    ctx.fillText(it.label, x + swatch + gap, y);
+  });
+
+  // download
+  const link = document.createElement("a");
+  link.download = `world_${seed}_${modeForFile}.png`;
+  link.href = out.toDataURL("image/png");
+  link.click();
+}
+
+// event hooks
+document.getElementById("regenBtn").onclick = generate;
+
+document.getElementById("exportPngBtn").onclick = exportPNGWithLegend;
+
+document.getElementById("kRange").oninput = function() {
+  document.getElementById("kVal").innerText = this.value;
+};
+
+document.getElementById("viewPhys").onclick = function() {
+  VIEW_MODE = 'terrain';
+  this.classList.add('active');
+  document.getElementById("viewPol").classList.remove('active');
+  render();
+};
+
+document.getElementById("viewPol").onclick = function() {
+  VIEW_MODE = 'political';
+  this.classList.add('active');
+  document.getElementById("viewPhys").classList.remove('active');
+  render();
+};
+
+document.getElementById("islandRange").oninput = function () {
+  document.getElementById("islandVal").innerText = this.value + "%";
+};
+
+generate();
+
+
+const canvas = document.getElementById("mapCanvas");
+const ins = document.getElementById("inspector");
+canvas.onmousemove = (e) => {
+    const rect = canvas.getBoundingClientRect();
+    const x = Math.floor((e.clientX - rect.left) * (CONFIG.WIDTH / rect.width));
+    const y = Math.floor((e.clientY - rect.top) * (CONFIG.HEIGHT / rect.height));
+    if(WORLD[y] && WORLD[y][x]) {
+        const c = WORLD[y][x];
+        ins.style.display = "block"; ins.style.left = (e.clientX + 15) + "px"; ins.style.top = (e.clientY + 15) + "px";
+        const k = c.kingdom !== null ? KINGDOMS[c.kingdom] : null;
+        ins.innerHTML = `Terrain: <b>${c.biome}</b><br>${k ? 'Kingdom: ' + k.name + '<br>Culture: ' + k.culture : 'Terra Incognita'}`;
+    }
+};
+canvas.onmouseleave = () => ins.style.display = "none";
+</script>
+</body>
+</html>
