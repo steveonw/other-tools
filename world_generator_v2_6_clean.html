@@ -1,0 +1,588 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <title>World Generator v2.6 - Pristine Atlas</title>
+  <style>
+    body { 
+      background: #0f0f0f; 
+      color: #e0e0e0; 
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      margin: 20px;
+      overflow-x: hidden;
+    }
+    h1 { margin-bottom: 5px; color: #fff; text-shadow: 0 2px 4px rgba(0,0,0,0.5); }
+    #status {
+      color: #7ab9ff;
+      margin-bottom: 15px;
+      font-size: 0.9em;
+      font-weight: bold;
+      height: 1.2em;
+    }
+    .canvas-container {
+      position: relative;
+      display: inline-block;
+      box-shadow: 0 10px 40px rgba(0,0,0,0.8);
+      border-radius: 12px;
+      overflow: hidden;
+      background: #000;
+      border: 1px solid #333;
+      cursor: crosshair;
+    }
+    canvas { 
+      display: block;
+      image-rendering: auto;
+      max-width: 100%;
+      height: auto;
+    }
+    #controls {
+      margin-bottom: 20px;
+      display: flex;
+      gap: 20px;
+      align-items: center;
+      flex-wrap: wrap;
+      background: #1e1e1e;
+      padding: 20px;
+      border-radius: 12px;
+      border: 1px solid #333;
+    }
+    button {
+      padding: 10px 18px;
+      background: #333;
+      color: #fff;
+      border: 1px solid #444;
+      border-radius: 6px;
+      cursor: pointer;
+      font-weight: 600;
+      transition: all 0.2s ease;
+      font-size: 0.9em;
+    }
+    button:hover { background: #444; border-color: #666; transform: translateY(-1px); }
+    button:active { transform: translateY(0); }
+    button.active { background: #3b82f6; border-color: #60a5fa; box-shadow: 0 0 10px rgba(59, 130, 246, 0.4); }
+    
+    button.download-btn { background: #10b981; border-color: #059669; }
+    button.download-html-btn { background: #6366f1; border-color: #4f46e5; }
+    
+    .control-group {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+    label { font-size: 0.75em; color: #888; text-transform: uppercase; letter-spacing: 1.5px; font-weight: bold; }
+    input[type="number"], input[type="range"] {
+      background: #000;
+      color: #fff;
+      border: 1px solid #444;
+      padding: 6px;
+      border-radius: 4px;
+      outline: none;
+    }
+    
+    #inspector {
+      position: absolute;
+      pointer-events: none;
+      background: rgba(0, 0, 0, 0.9);
+      border: 1px solid #444;
+      padding: 12px;
+      border-radius: 8px;
+      font-size: 12px;
+      display: none;
+      z-index: 100;
+      box-shadow: 0 8px 25px rgba(0,0,0,0.6);
+      min-width: 180px;
+      backdrop-filter: blur(8px);
+    }
+    .inspector-row { display: flex; justify-content: space-between; margin-bottom: 4px; }
+    .inspector-label { color: #aaa; margin-right: 10px; }
+    .inspector-val { color: #fff; font-weight: bold; }
+
+    #legend {
+      margin-top: 20px;
+      padding: 15px;
+      background: rgba(30, 30, 30, 0.8);
+      border: 1px solid #333;
+      font-size: 13px;
+      border-radius: 12px;
+      display: flex;
+      flex-wrap: wrap;
+      gap: 15px;
+      backdrop-filter: blur(5px);
+    }
+    .legend-item { display: flex; align-items: center; gap: 6px; }
+    .swatch {
+      width: 14px;
+      height: 14px;
+      border-radius: 3px;
+      border: 1px solid rgba(255,255,255,0.1);
+    }
+  </style>
+</head>
+<body>
+
+  <h1>World Generator v2.6</h1>
+  <div id="status">World Ready | Seed: 778756</div>
+  
+  <div id="controls">
+    <div class="control-group">
+      <label>Action</label>
+      <button id="regenerate" class="active">Generate Map</button>
+    </div>
+
+    <div class="control-group">
+      <label>Kingdoms</label>
+      <div style="display:flex; align-items:center; gap:10px">
+        <input type="range" id="kCountRange" min="2" max="60" value="18">
+        <span id="kCountVal" style="width: 20px; font-weight:bold">18</span>
+      </div>
+    </div>
+
+    <div class="control-group">
+      <label>Island Density</label>
+      <div style="display:flex; align-items:center; gap:10px">
+        <input type="range" id="islandRange" min="0" max="100" value="35">
+        <span id="islandVal" style="width: 30px; font-weight:bold">35%</span>
+      </div>
+    </div>
+
+    <div class="control-group">
+      <label>View Mode</label>
+      <div style="display:flex; gap:5px">
+        <button id="viewPhysical" class="active">Terrain</button>
+        <button id="viewPolitical">Diplomatic</button>
+      </div>
+    </div>
+
+    <div class="control-group">
+      <label>World Seed (DNA)</label>
+      <input type="number" id="seedInput" placeholder="Random Seed" style="width:120px">
+    </div>
+
+    <div class="control-group">
+      <label>Exports</label>
+      <div style="display:flex; gap:5px">
+        <button id="exportImage" class="download-btn">Save PNG</button>
+        <button id="exportHTML" class="download-html-btn">Download HTML</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="canvas-container" id="container">
+    <div id="inspector" style="display: none; left: 279px; top: 126px;">
+            <div class="inspector-row"><span class="inspector-label">Biome:</span> <span class="inspector-val">Abyssal </span></div>
+            <div class="inspector-row"><span class="inspector-label">Elevation:</span> <span class="inspector-val">0m</span></div>
+            <div class="inspector-row"><span class="inspector-label">Climate:</span> <span class="inspector-val">-2°C / 79% Hum.</span></div>
+            
+            
+        </div>
+    <canvas id="map" width="1200" height="900"></canvas>
+  </div>
+
+  <div id="legend">
+    <div class="legend-item"><span class="swatch" style="background:#0a1e3d"></span> Abyssal</div>
+    <div class="legend-item"><span class="swatch" style="background:#1b3c73"></span> Deep Ocean</div>
+    <div class="legend-item"><span class="swatch" style="background:#e8d1a7"></span> Sands</div>
+    <div class="legend-item"><span class="swatch" style="background:#92b84a"></span> Plains</div>
+    <div class="legend-item"><span class="swatch" style="background:#1a5e2b"></span> Lush Forest</div>
+    <div class="legend-item"><span class="swatch" style="background:#426b3e"></span> Taiga</div>
+    <div class="legend-item"><span class="swatch" style="background:#7a7a7a"></span> Mountains</div>
+    <div class="legend-item"><span class="swatch" style="background:#d9f0ff"></span> Ice Peaks</div>
+    <div class="legend-item"><span class="swatch" style="background:#4aa3df"></span> Waterways</div>
+  </div>
+
+<script>
+/**
+ * Procedural World Generator v2.6 - Pristine Geography Edition
+ */
+
+const CONFIG = {
+  WIDTH: 1200, 
+  HEIGHT: 900,
+  SEA_LEVEL: 38,
+  RIVER_SOURCES: 160,
+  SETTLEMENT_DENSITY: 0.00095
+};
+
+class Cell {
+  constructor(x, y) {
+    this.x = x; this.y = y;
+    this.height = 0; 
+    this.moisture = 0;
+    this.temp = 0;
+    this.river = false;
+    this.biome = null;
+    this.settlement = null; 
+    this.kingdom = null;
+    this.kingdomColor = null;
+    this.name = "";
+    this.kingdomName = "";
+    this.isIsland = false;
+  }
+}
+
+function seeded(s) {
+  return function() {
+    s = Math.sin(s) * 10000;
+    return s - Math.floor(s);
+  };
+}
+
+class SimplexNoise {
+  constructor(rand) {
+    this.p = new Uint8Array(256);
+    for (let i = 0; i < 256; i++) this.p[i] = i;
+    for (let i = 255; i > 0; i--) {
+      const j = Math.floor(rand() * (i + 1));
+      [this.p[i], this.p[j]] = [this.p[j], this.p[i]];
+    }
+    this.perm = new Uint8Array(512);
+    for (let i = 0; i < 512; i++) this.perm[i] = this.p[i & 255];
+  }
+  noise2D(xin, yin) {
+    let n0, n1, n2;
+    const F2 = 0.5 * (Math.sqrt(3.0) - 1.0);
+    const s = (xin + yin) * F2;
+    const i = Math.floor(xin + s);
+    const j = Math.floor(yin + s);
+    const G2 = (3.0 - Math.sqrt(3.0)) / 6.0;
+    const t = (i + j) * G2;
+    const x0 = xin - (i - t);
+    const y0 = yin - (j - t);
+    let i1, j1;
+    if (x0 > y0) { i1 = 1; j1 = 0; } else { i1 = 0; j1 = 1; }
+    const x1 = x0 - i1 + G2;
+    const y1 = y0 - j1 + G2;
+    const x2 = x0 - 1.0 + 2.0 * G2;
+    const y2 = y0 - 1.0 + 2.0 * G2;
+    const ii = i & 255; const jj = j & 255;
+    let t0 = 0.5 - x0 * x0 - y0 * y0;
+    if (t0 < 0) n0 = 0.0;
+    else { t0 *= t0; n0 = t0 * t0 * this.grad(this.perm[ii + this.perm[jj]], x0, y0); }
+    let t1 = 0.5 - x1 * x1 - y1 * y1;
+    if (t1 < 0) n1 = 0.0;
+    else { t1 *= t1; n1 = t1 * t1 * this.grad(this.perm[ii + i1 + this.perm[jj + j1]], x1, y1); }
+    let t2 = 0.5 - x2 * x2 - y2 * y2;
+    if (t2 < 0) n2 = 0.0;
+    else { t2 *= t2; n2 = t2 * t2 * this.grad(this.perm[ii + 1 + this.perm[jj + 1]], x2, y2); }
+    return 70.0 * (n0 + n1 + n2);
+  }
+  grad(hash, x, y) {
+    const h = hash & 7;
+    const u = h < 4 ? x : y; const v = h < 4 ? y : x;
+    return ((h & 1) ? -u : u) + ((h & 2) ? -2.0 * v : 2.0 * v);
+  }
+  fbm(x, y, octaves = 7, freq = 0.0015) {
+    let total = 0, frequency = freq, amplitude = 1, maxValue = 0;
+    for (let i = 0; i < octaves; i++) {
+      total += this.noise2D(x * frequency, y * frequency) * amplitude;
+      maxValue += amplitude; amplitude *= 0.5; frequency *= 2;
+    }
+    return total / maxValue;
+  }
+}
+
+function getNeighbors(world, x, y) {
+  const res = [];
+  if (y > 0) res.push(world[y - 1][x]);
+  if (y < CONFIG.HEIGHT - 1) res.push(world[y + 1][x]);
+  if (x > 0) res.push(world[y][x - 1]);
+  if (x < CONFIG.WIDTH - 1) res.push(world[y][x + 1]);
+  return res;
+}
+
+function generateWorldData(seed, kCount, islandDensity) {
+  const rand = seeded(seed);
+  const noise = new SimplexNoise(rand);
+  const world = Array.from({length: CONFIG.HEIGHT}, (_,y) => Array.from({length: CONFIG.WIDTH}, (_,x) => new Cell(x,y)));
+
+  // 1. Geography
+  for (let y = 0; y < CONFIG.HEIGHT; y++) {
+    for (let x = 0; x < CONFIG.WIDTH; x++) {
+      const cell = world[y][x];
+      let h = (noise.fbm(x, y) + 1) / 2;
+      const dx = (x / CONFIG.WIDTH) - 0.5, dy = (y / CONFIG.HEIGHT) - 0.5;
+      const dist = Math.sqrt(dx * dx + dy * dy) * 2.1;
+      
+      let baseHeight = h * 100 * Math.max(0, 1 - Math.pow(dist, 2.5));
+      
+      if (baseHeight < CONFIG.SEA_LEVEL && baseHeight > CONFIG.SEA_LEVEL - 15) {
+          const islandNoise = (noise.fbm(x, y, 4, 0.015) + 1) / 2;
+          const threshold = 1 - (islandDensity / 100);
+          if (islandNoise > threshold) {
+              baseHeight = CONFIG.SEA_LEVEL + (islandNoise * 18);
+              cell.isIsland = true;
+          }
+      }
+      
+      cell.height = baseHeight;
+      const latFactor = 1 - Math.abs((y / CONFIG.HEIGHT) - 0.5) * 2;
+      cell.temp = (latFactor * 60) + (noise.fbm(x, y, 3, 0.01) * 20) - (cell.height * 0.4);
+      cell.moisture = (noise.fbm(x + 500, y + 500, 4, 0.002) + 1) * 50;
+    }
+  }
+
+  // 2. Hydrology
+  for (let i = 0; i < CONFIG.RIVER_SOURCES; i++) {
+    let curr = world[Math.floor(rand() * CONFIG.HEIGHT)][Math.floor(rand() * CONFIG.WIDTH)];
+    if (curr.height < 65 || curr.isIsland) continue;
+    while (curr && curr.height > CONFIG.SEA_LEVEL && !curr.river) {
+      curr.river = true;
+      let lowest = curr;
+      getNeighbors(world, curr.x, curr.y).forEach(n => { if (n.height < lowest.height) lowest = n; });
+      if (lowest === curr) break;
+      curr = lowest;
+    }
+  }
+
+  // 3. Biomes
+  for (let y = 0; y < CONFIG.HEIGHT; y++) {
+    for (let x = 0; x < CONFIG.WIDTH; x++) {
+      const c = world[y][x];
+      if (c.height <= CONFIG.SEA_LEVEL) {
+          if (c.height < 15) c.biome = 'Abyssal';
+          else if (c.height < 28) c.biome = 'DeepOcean';
+          else c.biome = 'Ocean';
+      }
+      else if (c.height > 90) c.biome = 'IcePeaks';
+      else if (c.height > 78) c.biome = 'Mountains';
+      else if (c.temp < 5) c.biome = 'Tundra';
+      else if (c.temp < 15) c.biome = 'Taiga';
+      else if (c.moisture < 25) c.biome = 'Desert';
+      else if (c.moisture < 45) c.biome = 'Plains';
+      else if (c.height < 42) c.biome = 'Coast';
+      else c.biome = 'Forest';
+    }
+  }
+
+  // 4. Civilizations
+  const SYLLABLES = ["Vorn", "Kael", "Aet", "Zir", "Mor", "Thy", "Oli", "Xan", "Eld", "Bel", "Drak", "Sol", "Lun", "Fen", "Yur", "Grim", "Val", "Nar", "Quin", "Zal", "Thrax", "Ur", "Zen"];
+  const K_TYPES = ["Kingdom", "Empire", "Dominion", "Republic", "Highland", "Dynasty", "League", "Covenant", "Unity"];
+  
+  const capitals = [];
+  const kingdomColors = Array.from({length: kCount}, (_, i) => `hsl(${(i * (360/kCount) + (seed % 360)) % 360}, 65%, 45%)`);
+  const kingdomNames = Array.from({length: kCount}, () => {
+    let base = SYLLABLES[Math.floor(rand()*SYLLABLES.length)];
+    let suffix = SYLLABLES[Math.floor(rand()*SYLLABLES.length)].toLowerCase();
+    return `${base}${suffix} ${K_TYPES[Math.floor(rand()*K_TYPES.length)]}`;
+  });
+
+  for (let i = 0; i < kCount; i++) {
+    let attempts = 0;
+    while (attempts < 300) {
+      let rx = Math.floor(rand() * CONFIG.WIDTH);
+      let ry = Math.floor(rand() * CONFIG.HEIGHT);
+      let cell = world[ry][rx];
+      if (cell.height > CONFIG.SEA_LEVEL + 5 && cell.height < 75 && cell.temp > 10 && !capitals.some(c => Math.hypot(c.x-rx, c.y-ry) < 65)) {
+        cell.settlement = 'Capital';
+        cell.kingdom = i;
+        cell.kingdomColor = kingdomColors[i];
+        cell.kingdomName = kingdomNames[i];
+        cell.name = SYLLABLES[Math.floor(rand()*SYLLABLES.length)] + (rand() > 0.5 ? "ia" : "gard");
+        capitals.push(cell);
+        break;
+      }
+      attempts++;
+    }
+  }
+
+  // Expansion
+  let queue = capitals.map(c => ({cell: c, k: c.kingdom}));
+  while (queue.length > 0) {
+    const nextQueue = [];
+    queue.forEach(q => {
+      getNeighbors(world, q.cell.x, q.cell.y).forEach(n => {
+        if (n.height > CONFIG.SEA_LEVEL && n.kingdom === null) {
+          n.kingdom = q.k;
+          n.kingdomColor = kingdomColors[q.k];
+          n.kingdomName = kingdomNames[q.k];
+          nextQueue.push({cell: n, k: q.k});
+        }
+      });
+    });
+    queue = nextQueue;
+  }
+
+  // Cities and Towns
+  world.flat().forEach(c => {
+    if (c.height > CONFIG.SEA_LEVEL && c.settlement === null) {
+      let chance = CONFIG.SETTLEMENT_DENSITY;
+      if (c.river) chance *= 6.5;
+      if (c.biome === 'Coast') chance *= 5;
+      if (c.isIsland) chance *= 1.8;
+      if (rand() < chance) {
+        c.settlement = rand() > 0.3 ? 'Town' : 'City';
+        const suffixes = ["port", "bridge", "bay", "fall", "wood", "reef", "haven", "stead", "keep", "marsh"];
+        c.name = SYLLABLES[Math.floor(rand()*SYLLABLES.length)] + suffixes[Math.floor(rand()*suffixes.length)];
+      }
+    }
+  });
+
+  return world;
+}
+
+/** RENDERING **/
+let CURRENT_WORLD = null;
+let VIEW_MODE = 'physical';
+
+function hexToRgb(hex) {
+    const r = parseInt(hex.slice(1, 3), 16);
+    const g = parseInt(hex.slice(3, 5), 16);
+    const b = parseInt(hex.slice(5, 7), 16);
+    return [r, g, b];
+}
+
+function render(world) {
+  const canvas = document.getElementById("map");
+  const ctx = canvas.getContext("2d");
+  canvas.width = CONFIG.WIDTH;
+  canvas.height = CONFIG.HEIGHT;
+
+  const biomes = {
+    Abyssal: "#0a1e3d", DeepOcean: "#152d52", Ocean: "#1b3c73", Coast: "#e8d1a7",
+    Desert: "#f0dfb1", Plains: "#92b84a", Forest: "#1a5e2b", Tundra: "#a8c0bf",
+    Taiga: "#426b3e", Mountains: "#7a7a7a", IcePeaks: "#d9f0ff"
+  };
+
+  const imgData = ctx.createImageData(CONFIG.WIDTH, CONFIG.HEIGHT);
+  const data = imgData.data;
+
+  for (let y = 0; y < CONFIG.HEIGHT; y++) {
+    for (let x = 0; x < CONFIG.WIDTH; x++) {
+      const c = world[y][x];
+      let [r, g, b] = hexToRgb(biomes[c.biome]);
+
+      // Simple Shading
+      if (y > 0 && x > 0 && c.height > CONFIG.SEA_LEVEL) {
+          const hLeft = world[y][x-1].height;
+          const hUp = world[y-1][x].height;
+          const slope = (c.height - hLeft) + (c.height - hUp);
+          const shade = 1 + (slope * 0.07);
+          r = Math.min(255, r * shade);
+          g = Math.min(255, g * shade);
+          b = Math.min(255, b * shade);
+      }
+
+      // Shoreline blending
+      if (c.height <= CONFIG.SEA_LEVEL && c.height > CONFIG.SEA_LEVEL - 3) {
+          r = r * 0.8 + 100 * 0.2; g = g * 0.8 + 180 * 0.2; b = b * 0.8 + 255 * 0.2;
+      }
+
+      // Political Overlay
+      if (VIEW_MODE === 'political' && c.kingdomColor && c.height > CONFIG.SEA_LEVEL) {
+        const tempCtx = document.createElement('canvas').getContext('2d');
+        tempCtx.fillStyle = c.kingdomColor;
+        const colorStr = tempCtx.fillStyle;
+        const kr = parseInt(colorStr.slice(1,3), 16), kg = parseInt(colorStr.slice(3,5), 16), kb = parseInt(colorStr.slice(5,7), 16);
+        r = r * 0.3 + kr * 0.7; g = g * 0.3 + kg * 0.7; b = b * 0.3 + kb * 0.7;
+      }
+
+      const idx = (y * CONFIG.WIDTH + x) * 4;
+      data[idx] = r; data[idx+1] = g; data[idx+2] = b; data[idx+3] = 255;
+      
+      // Rivers
+      if (c.river && c.height > CONFIG.SEA_LEVEL) { 
+          data[idx] = 60; data[idx+1] = 140; data[idx+2] = 200; 
+      }
+      
+      // Borders
+      if (VIEW_MODE === 'political' && c.height > CONFIG.SEA_LEVEL) {
+          if ((x < CONFIG.WIDTH - 1 && world[y][x+1].kingdom !== c.kingdom) || 
+              (y < CONFIG.HEIGHT - 1 && world[y+1][x].kingdom !== c.kingdom)) {
+              data[idx] = 20; data[idx+1] = 20; data[idx+2] = 20; 
+          }
+      }
+    }
+  }
+  ctx.putImageData(imgData, 0, 0);
+
+  // Labels & Markers
+  ctx.textAlign = "center";
+  ctx.shadowColor = "rgba(0,0,0,0.9)";
+  ctx.shadowBlur = 5;
+  world.flat().forEach(c => {
+    if (c.settlement) {
+      if (c.settlement === 'Capital') {
+        ctx.fillStyle = "#ffd700"; ctx.font = "bold 18px serif"; ctx.fillText("✥", c.x, c.y);
+        ctx.fillStyle = "white"; ctx.font = "bold 13px 'Segoe UI'"; ctx.fillText(c.name.toUpperCase(), c.x, c.y - 14);
+      } else if (c.settlement === 'City') {
+        ctx.fillStyle = "white"; ctx.font = "12px sans-serif"; ctx.fillText("○", c.x, c.y);
+        ctx.font = "10px 'Segoe UI'"; ctx.fillText(c.name, c.x, c.y - 12);
+      } else if (c.settlement === 'Town') {
+        ctx.fillStyle = "#ddd"; ctx.font = "9px sans-serif"; ctx.fillText("•", c.x, c.y);
+      }
+    }
+  });
+}
+
+const mapCanvas = document.getElementById("map");
+const inspector = document.getElementById("inspector");
+
+mapCanvas.onmousemove = (e) => {
+    if (!CURRENT_WORLD) return;
+    const rect = mapCanvas.getBoundingClientRect();
+    const x = Math.floor((e.clientX - rect.left) * (CONFIG.WIDTH / rect.width));
+    const y = Math.floor((e.clientY - rect.top) * (CONFIG.HEIGHT / rect.height));
+
+    if (CURRENT_WORLD[y] && CURRENT_WORLD[y][x]) {
+        const c = CURRENT_WORLD[y][x];
+        inspector.style.display = "block";
+        inspector.style.left = (e.clientX + 15) + "px";
+        inspector.style.top = (e.clientY + 15) + "px";
+        inspector.innerHTML = `
+            <div class="inspector-row"><span class="inspector-label">Biome:</span> <span class="inspector-val">${c.biome} ${c.isIsland ? '(Island)' : ''}</span></div>
+            <div class="inspector-row"><span class="inspector-label">Elevation:</span> <span class="inspector-val">${Math.round(c.height * 50)}m</span></div>
+            <div class="inspector-row"><span class="inspector-label">Climate:</span> <span class="inspector-val">${Math.round(c.temp)}°C / ${Math.round(c.moisture)}% Hum.</span></div>
+            ${c.kingdomName ? `<div class="inspector-row" style="border-top:1px solid #444; margin-top:8px; padding-top:8px;"><span class="inspector-label">Sovereignty:</span> <span class="inspector-val" style="color:${c.kingdomColor}">${c.kingdomName}</span></div>` : ''}
+            ${c.name ? `<div class="inspector-row"><span class="inspector-label">Settlement:</span> <span class="inspector-val">${c.name} (${c.settlement})</span></div>` : ''}
+        `;
+    }
+};
+mapCanvas.onmouseleave = () => inspector.style.display = "none";
+
+async function startGen() {
+  const seedInput = document.getElementById("seedInput");
+  let seed = parseInt(seedInput.value);
+  if (isNaN(seed)) {
+      seed = Math.floor(Math.random() * 999999) + 1;
+      seedInput.value = seed;
+  }
+  
+  const kCount = parseInt(document.getElementById("kCountRange").value);
+  const islandDensity = parseInt(document.getElementById("islandRange").value);
+  
+  document.getElementById("status").innerText = "Generating world data...";
+  await new Promise(r => setTimeout(r, 60));
+  CURRENT_WORLD = generateWorldData(seed, kCount, islandDensity);
+  render(CURRENT_WORLD);
+  document.getElementById("status").innerText = `World Ready | Seed: ${seed}`;
+}
+
+document.getElementById("kCountRange").oninput = function() { document.getElementById("kCountVal").innerText = this.value; };
+document.getElementById("islandRange").oninput = function() { document.getElementById("islandVal").innerText = this.value + "%"; };
+document.getElementById("regenerate").onclick = startGen;
+document.getElementById("viewPhysical").onclick = function() { VIEW_MODE = 'physical'; this.classList.add('active'); document.getElementById("viewPolitical").classList.remove('active'); render(CURRENT_WORLD); };
+document.getElementById("viewPolitical").onclick = function() { VIEW_MODE = 'political'; this.classList.add('active'); document.getElementById("viewPhysical").classList.remove('active'); render(CURRENT_WORLD); };
+document.getElementById("exportImage").onclick = () => {
+    const link = document.createElement('a');
+    link.download = `atlas_v26_seed_${document.getElementById("seedInput").value}.png`;
+    link.href = mapCanvas.toDataURL("image/png");
+    link.click();
+};
+
+// Download logic for entire HTML file
+document.getElementById("exportHTML").onclick = () => {
+    const htmlContent = document.documentElement.outerHTML;
+    const blob = new Blob([htmlContent], { type: 'text/html' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = 'world_generator_v2_6.html';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+};
+
+startGen();
+</script>
+
